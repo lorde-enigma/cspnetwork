@@ -132,12 +132,9 @@ bool IPv6AddressManager::checkAddressExists(const std::string& interface, const 
     return executeCommand(command);
 }
 
-domain::IPv6Address IPv6AddressManager::seedToAddress(const std::string& seed) const {
-    std::hash<std::string> hasher;
-    uint64_t numericSeed = hasher(seed);
-    
-    std::string context = "ipv6:" + seed;
-    std::string input = std::to_string(numericSeed) + ":" + context;
+domain::IPv6Address IPv6AddressManager::seedToAddress(domain::SeedValue seed) const {
+    std::string domain = addressPrefix_.empty() ? DEFAULT_PREFIX : addressPrefix_;
+    std::string input = std::to_string(seed) + ":ipv6:" + domain;
     
     std::array<uint8_t, 32> hash;
     EVP_MD_CTX* ctx = EVP_MD_CTX_new();
