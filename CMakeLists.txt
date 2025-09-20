@@ -37,6 +37,7 @@ set(CLIENT_SOURCES
 
 add_executable(cspnetwork
     src/main.cpp
+    src/application/services.cpp
     src/application/vpn_client.cpp
     src/infrastructure/config_manager.cpp
     src/infrastructure/error_handler.cpp
@@ -51,6 +52,7 @@ add_executable(cspnetwork
     src/infrastructure/seeded_router.cpp
     src/infrastructure/thread_management.cpp
     src/infrastructure/vpn_protocol.cpp
+    src/infrastructure/ipv6_address_manager.cpp
     src/presentation/server.cpp
     src/presentation/cli.cpp
     src/presentation/container.cpp
@@ -69,6 +71,7 @@ add_executable(cspvpn-gen
     src/generator_main.cpp
     src/application/client_generator.cpp
     src/infrastructure/config_manager.cpp
+    src/infrastructure/monitoring_system.cpp
     src/infrastructure/repositories.cpp
     src/infrastructure/seed_generator.cpp
     src/infrastructure/ipv6_address_manager.cpp

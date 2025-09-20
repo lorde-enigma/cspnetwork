@@ -117,7 +117,7 @@ public:
     std::future<AddressAllocationResponse> execute(const AddressAllocationRequest& request);
     
 private:
-    domain::SeedContext build_seed_context(const AddressAllocationRequest& request);
+    domain::SeedData build_seed_context(const AddressAllocationRequest& request);
     bool validate_allocated_address(const domain::IPv6Address& address);
 };
 

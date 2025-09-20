@@ -12,13 +12,14 @@ TEST_SUITE(SeedRepositoryTests) {
     }
 
     TEST_CASE(StoreSeed, "Store seed and verify retrieval") {
-        auto seed = std::make_shared<seeded_vpn::domain::Seed>("test-seed-123");
+        auto seed = std::make_shared<seeded_vpn::domain::Seed>();
+        seed->value = 123456789ULL;
         
         ASSERT_NO_THROW(test_repo->store(seed));
         
         auto retrieved = test_repo->find_by_id("test-seed-123");
         ASSERT_NOT_NULL(retrieved);
-        ASSERT_EQUAL(retrieved->get_id(), "test-seed-123");
+        ASSERT_EQUAL(retrieved->value, 123456789ULL);
     }
 
     TEST_CASE(FindNonExistentSeed, "Verify find_by_id returns null for non-existent seed") {
@@ -27,8 +28,10 @@ TEST_SUITE(SeedRepositoryTests) {
     }
 
     TEST_CASE(ListSeedsByStrategy, "List seeds filtered by allocation strategy") {
-        auto seed1 = std::make_shared<seeded_vpn::domain::Seed>("seed-1");
-        auto seed2 = std::make_shared<seeded_vpn::domain::Seed>("seed-2");
+        auto seed1 = std::make_shared<seeded_vpn::domain::Seed>();
+        auto seed2 = std::make_shared<seeded_vpn::domain::Seed>();
+        seed1->value = 111ULL;
+        seed2->value = 222ULL;
         
         seed1->set_allocation_strategy(seeded_vpn::domain::SeedAllocationStrategy::PER_CONNECTION);
         seed2->set_allocation_strategy(seeded_vpn::domain::SeedAllocationStrategy::PER_CLIENT);
@@ -44,7 +47,8 @@ TEST_SUITE(SeedRepositoryTests) {
     }
 
     TEST_CASE(RemoveSeed, "Remove seed and verify removal") {
-        auto seed = std::make_shared<seeded_vpn::domain::Seed>("test-seed-remove");
+        auto seed = std::make_shared<seeded_vpn::domain::Seed>();
+        seed->value = 999ULL;
         test_repo->store(seed);
         
         auto retrieved = test_repo->find_by_id("test-seed-remove");

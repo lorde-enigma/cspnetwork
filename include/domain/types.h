@@ -64,6 +64,19 @@ struct SeedContext {
     ConnectionId connection_id;
 };
 
+struct Seed {
+    SeedValue value;
+    std::string algorithm{"sha256"};
+    std::chrono::steady_clock::time_point generated_at;
+};
+
+struct SeedData {
+    Seed value;
+    std::chrono::system_clock::time_point created_at;
+    std::chrono::system_clock::time_point expires_at;
+    bool is_active{false};
+};
+
 inline std::ostream& operator<<(std::ostream& os, const IPv6Address& addr) {
     os << std::hex << std::setfill('0');
     for (size_t i = 0; i < addr.size(); i += 2) {

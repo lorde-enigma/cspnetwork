@@ -199,11 +199,25 @@ bool IPv6AddressManager::isCached(const std::string& interface, const domain::IP
     return it != addressCache_.end() && it->second.is_active;
 }
 
+void IPv6AddressManager::removeFromCache(const std::string& interface, const domain::IPv6Address& address) {
+    std::string key = getCacheKey(interface, address);
+    auto it = addressCache_.find(key);
+    if (it != addressCache_.end()) {
+        it->second.is_active = false;
+        addressCache_.erase(it);
+    }
+}
+
+bool IPv6AddressManager::isValidInterface(const std::string& interface) const {
+    std::string command = "ip link show " + interface + " 2>/dev/null";
+    return executeCommand(command);
+}
+
 std::string IPv6AddressManager::getCacheKey(const std::string& interface, const domain::IPv6Address& address) const {
     return interface + ":" + addressToString(address);
 }
 
-bool IPv6AddressManager::executeCommand(const std::string& command) {
+bool IPv6AddressManager::executeCommand(const std::string& command) const {
     int result = std::system(command.c_str());
     return WEXITSTATUS(result) == 0;
 }
@@ -235,6 +249,11 @@ void IPv6AddressManager::cleanupExpired(std::chrono::minutes max_age) {
 
 std::pair<size_t, size_t> IPv6AddressManager::getStatistics() const {
     return {totalAllocations_.load(), totalReleases_.load()};
+}
+
+void IPv6AddressManager::setAddressPrefix(const std::string& prefix) {
+    std::lock_guard<std::mutex> lock(mutex_);
+    addressPrefix_ = prefix;
 }
 
 SeededIPv6Manager::SeededIPv6Manager(std::shared_ptr<domain::ISeedGenerator> seedGenerator,

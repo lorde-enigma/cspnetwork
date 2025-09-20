@@ -1,6 +1,7 @@
 #include "../include/application/client_generator.h"
 #include "../include/infrastructure/config_manager.h"
 #include "../include/infrastructure/repositories.h"
+#include "../include/infrastructure/ipv6_address_manager.h"
 #include "../include/domain/entities.h"
 #include <iostream>
 #include <fstream>
@@ -56,16 +57,17 @@ int main(int argc, char* argv[]) {
     }
 
     try {
-        auto logger = std::make_shared<infrastructure::FileSystemLogger>("client_generator.log");
+        auto logger = std::make_shared<seeded_vpn::infrastructure::FileSystemLogger>("client_generator.log");
         CipherProxy::Infrastructure::ConfigManager& config_manager = CipherProxy::Infrastructure::ConfigManager::instance();
         config_manager.load_config("config/default.yaml");
         
-        auto seed_generator = std::make_shared<infrastructure::ConcreteSeedGenerator>();
-        auto seed_manager = std::make_shared<domain::SeedManager>(seed_generator);
-        auto address_manager = std::make_shared<seeded_vpn::infrastructure::IPv6AddressManager>();
-        auto address_pool_manager = std::make_shared<domain::AddressPoolManager>(address_manager, logger);
+        auto seed_generator = std::make_shared<seeded_vpn::infrastructure::ConcreteSeedGenerator>();
+        auto seed_manager = std::make_shared<seeded_vpn::domain::SeedManager>(seed_generator);
         
-        auto client_generator = std::make_shared<application::ClientGeneratorService>(
+        std::shared_ptr<seeded_vpn::infrastructure::IPv6AddressManager> address_manager(&seeded_vpn::infrastructure::IPv6AddressManager::getInstance(), [](seeded_vpn::infrastructure::IPv6AddressManager*){});
+        auto address_pool_manager = std::make_shared<seeded_vpn::domain::AddressPoolManager>(address_manager, logger);
+        
+        auto client_generator = std::make_shared<seeded_vpn::application::ClientGeneratorService>(
             seed_manager, address_pool_manager, logger);
 
         if (list_clients) {

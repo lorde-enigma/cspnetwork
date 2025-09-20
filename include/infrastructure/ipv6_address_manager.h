@@ -70,7 +70,7 @@ private:
     domain::IPv6Address stringToAddress(const std::string& address_str) const;
     std::string getCacheKey(const std::string& interface, const domain::IPv6Address& address) const;
     
-    bool executeCommand(const std::string& command);
+    bool executeCommand(const std::string& command) const;
     bool addSystemAddress(const std::string& interface, const domain::IPv6Address& address);
     bool removeSystemAddress(const std::string& interface, const domain::IPv6Address& address);
     bool isValidInterface(const std::string& interface) const;

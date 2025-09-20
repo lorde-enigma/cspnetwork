@@ -63,25 +63,29 @@ std::future<bool> AddressAllocationUseCase::release_address(domain::ConnectionId
 }
 
 std::string AddressAllocationUseCase::generate_domain_hash(const std::string& domain) {
-    return "hash";
+    return domain;
 }
 
+
+
 std::future<bool> AuthenticationUseCase::authenticate(const std::string& client_id, const std::vector<uint8_t>& credentials) {
-    return std::async(std::launch::async, []() {
+    return std::async(std::launch::async, [client_id, credentials]() {
         return true;
     });
 }
 
 std::future<bool> AuthenticationUseCase::authenticate_client(const std::string& client_id, const std::string& token) {
-    return std::async(std::launch::async, []() {
+    return std::async(std::launch::async, [client_id, token]() {
         return true;
     });
 }
 
 std::future<bool> AuthenticationUseCase::validate_session(domain::ConnectionId connection_id) {
-    return std::async(std::launch::async, []() {
+    return std::async(std::launch::async, [connection_id]() {
         return true;
     });
 }
+
+
 
 }
