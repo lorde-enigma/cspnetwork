@@ -57,7 +57,8 @@ public:
     void setAddressPrefix(const std::string& prefix);
     
     std::pair<size_t, size_t> getStatistics() const;
-    bool validate_seed(domain::SeedValue seed) const override;
+    
+    domain::IPv6Address seedToAddress(domain::SeedValue seed) const;
 
 private:
     IPv6AddressManager();
@@ -65,7 +66,6 @@ private:
     IPv6AddressManager(const IPv6AddressManager&) = delete;
     IPv6AddressManager& operator=(const IPv6AddressManager&) = delete;
 
-    domain::IPv6Address seedToAddress(domain::SeedValue seed) const;
     std::string addressToString(const domain::IPv6Address& address) const;
     domain::IPv6Address stringToAddress(const std::string& address_str) const;
     std::string getCacheKey(const std::string& interface, const domain::IPv6Address& address) const;
@@ -107,7 +107,7 @@ public:
                                std::shared_ptr<IPv6AddressManager> addressManager);
     
     struct AllocationResult {
-        Result result;
+        IPv6AddressManager::Result result;
         domain::IPv6Address address;
         domain::SeedValue seed;
     };

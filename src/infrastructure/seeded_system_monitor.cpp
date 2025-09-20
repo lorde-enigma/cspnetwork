@@ -4,7 +4,7 @@
 
 namespace seeded_vpn::infrastructure {
 
-SeededSystemMonitor::SeededSystemMonitor(std::shared_ptr<domain::Logger> logger)
+SeededSystemMonitor::SeededSystemMonitor(std::shared_ptr<domain::ILogger> logger)
     : logger_(logger), running_(false), checkInterval_(30) {}
 
 SeededSystemMonitor::~SeededSystemMonitor() {
@@ -18,7 +18,7 @@ void SeededSystemMonitor::start() {
     monitorThread_ = std::thread(&SeededSystemMonitor::monitorLoop, this);
     
     if (logger_) {
-        logger_->log(domain::LogLevel::INFO, "seeded system monitor started");
+        logger_->info("seeded system monitor started");
     }
 }
 
@@ -31,7 +31,7 @@ void SeededSystemMonitor::stop() {
     }
     
     if (logger_) {
-        logger_->log(domain::LogLevel::INFO, "seeded system monitor stopped");
+        logger_->info("seeded system monitor stopped");
     }
 }
 
@@ -47,7 +47,7 @@ void SeededSystemMonitor::monitorLoop() {
             performMaintenance();
         } catch (const std::exception& e) {
             if (logger_) {
-                logger_->log(domain::LogLevel::ERROR, "monitor error: " + std::string(e.what()));
+                logger_->error("monitor error: " + std::string(e.what()));
             }
         }
         
@@ -64,7 +64,7 @@ void SeededSystemMonitor::logMetrics() {
     size_t ipv6Count = getUsedIPv6Count();
     
     if (logger_) {
-        logger_->log(domain::LogLevel::INFO, 
+        logger_->info( 
             "system metrics - ipv6 addresses: " + std::to_string(ipv6Count));
     }
 }
@@ -83,20 +83,20 @@ void SeededSystemMonitor::checkIPv6Resources() {
     size_t usedCount = getUsedIPv6Count();
     
     if (usedCount > 8000 && logger_) {
-        logger_->log(domain::LogLevel::WARNING, 
+        logger_->warn( 
             "high ipv6 usage: " + std::to_string(usedCount));
     }
 }
 
 void SeededSystemMonitor::checkSeedManagerState() {
     if (logger_) {
-        logger_->log(domain::LogLevel::DEBUG, "seed manager operational");
+        logger_->debug("seed manager operational");
     }
 }
 
 void SeededSystemMonitor::cleanupResources() {
     if (logger_) {
-        logger_->log(domain::LogLevel::INFO, "performing resource cleanup");
+        logger_->info("performing resource cleanup");
     }
     
     auto& manager = IPv6AddressManager::getInstance();

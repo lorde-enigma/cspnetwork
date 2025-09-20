@@ -1,6 +1,8 @@
 #include "presentation/factory.h"
 #include "application/services.h"
 #include "infrastructure/config_manager.h"
+#include "infrastructure/repositories.h"
+#include "infrastructure/ipv6_address_manager.h"
 #include <filesystem>
 
 namespace seeded_vpn::presentation {
@@ -20,14 +22,16 @@ std::shared_ptr<application::IAuthenticationUseCase> DependencyFactory::auth_use
 
 std::shared_ptr<domain::ISeedGenerator> DependencyFactory::create_seed_generator() {
     if (!seed_generator_) {
-        seed_generator_ = std::make_shared<infrastructure::CryptoSeedGenerator>();
+        seed_generator_ = std::make_shared<infrastructure::ConcreteSeedGenerator>();
     }
     return seed_generator_;
 }
 
 std::shared_ptr<domain::IIPv6AddressManager> DependencyFactory::create_ipv6_manager(const std::string& prefix) {
     if (!ipv6_manager_) {
-        ipv6_manager_ = std::make_shared<infrastructure::IPv6AddressManager>(prefix);
+        auto& manager = infrastructure::IPv6AddressManager::getInstance();
+        manager.setAddressPrefix(prefix);
+        ipv6_manager_ = std::shared_ptr<domain::IIPv6AddressManager>(&manager, [](auto*){});
     }
     return ipv6_manager_;
 }

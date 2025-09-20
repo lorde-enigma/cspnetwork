@@ -161,26 +161,22 @@ domain::IPv6Address IPv6AddressRepository::seed_to_address(domain::SeedValue see
     addr[14] = static_cast<uint8_t>((seed_low >> 8) & 0xFF);
     addr[15] = static_cast<uint8_t>(seed_low & 0xFF);
     
+    return addr;
+}
+
+std::string IPv6AddressRepository::address_to_string(const domain::IPv6Address& address) {
     std::ostringstream oss;
     oss << std::hex << std::setfill('0');
     for (size_t i = 0; i < 16; i += 2) {
         if (i > 0) oss << ":";
-        uint16_t word = (static_cast<uint16_t>(addr[i]) << 8) | addr[i + 1];
+        uint16_t word = (static_cast<uint16_t>(address[i]) << 8) | address[i + 1];
         oss << std::setw(4) << word;
     }
-    
     return oss.str();
 }
 
-std::string IPv6AddressRepository::address_to_string(const domain::IPv6Address& address) {
-    return address;
-}
-
 bool IPv6AddressRepository::is_valid_address(const domain::IPv6Address& address) {
-    if (address.empty()) return false;
-    
-    std::regex ipv6_pattern(R"(^([0-9a-fA-F]{1,4}:){7}[0-9a-fA-F]{1,4}$)");
-    return std::regex_match(address, ipv6_pattern) && address.find("fd00:") == 0;
+    return address[0] == 0xfd && address[1] == 0x00;
 }
 
 bool IPv6AddressRepository::expand_pool() {

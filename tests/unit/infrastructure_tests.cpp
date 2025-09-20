@@ -1,7 +1,6 @@
 #include "testing/test_framework.h"
 #include "infrastructure/repositories.h"
 #include "infrastructure/async_socket_manager.h"
-#include "infrastructure/packet_processor.h"
 #include "infrastructure/config_manager.h"
 #include <memory>
 
@@ -12,7 +11,7 @@ TEST_SUITE(SeedRepositoryTests) {
         test_repo = std::make_unique<seeded_vpn::infrastructure::SeedRepository>();
     }
 
-    TEST_CASE(StoreSeed) {
+    TEST_CASE(StoreSeed, "Store seed and verify retrieval") {
         auto seed = std::make_shared<seeded_vpn::domain::Seed>("test-seed-123");
         
         ASSERT_NO_THROW(test_repo->store(seed));
@@ -22,12 +21,12 @@ TEST_SUITE(SeedRepositoryTests) {
         ASSERT_EQUAL(retrieved->get_id(), "test-seed-123");
     }
 
-    TEST_CASE(FindNonExistentSeed) {
+    TEST_CASE(FindNonExistentSeed, "Verify find_by_id returns null for non-existent seed") {
         auto result = test_repo->find_by_id("non-existent");
         ASSERT_NULL(result);
     }
 
-    TEST_CASE(ListSeedsByStrategy) {
+    TEST_CASE(ListSeedsByStrategy, "List seeds filtered by allocation strategy") {
         auto seed1 = std::make_shared<seeded_vpn::domain::Seed>("seed-1");
         auto seed2 = std::make_shared<seeded_vpn::domain::Seed>("seed-2");
         
@@ -44,7 +43,7 @@ TEST_SUITE(SeedRepositoryTests) {
         ASSERT_EQUAL(per_connection_seeds[0]->get_id(), "seed-1");
     }
 
-    TEST_CASE(RemoveSeed) {
+    TEST_CASE(RemoveSeed, "Remove seed and verify removal") {
         auto seed = std::make_shared<seeded_vpn::domain::Seed>("test-seed-remove");
         test_repo->store(seed);
         
@@ -71,14 +70,14 @@ TEST_SUITE(SocketManagerTests) {
         socket_manager = std::make_unique<seeded_vpn::infrastructure::SocketManager>();
     }
 
-    TEST_CASE(CreateSocket) {
+    TEST_CASE(CreateSocket, "Create socket and verify validity") {
         auto socket_id = socket_manager->create_socket(AF_INET6, SOCK_STREAM);
         
         ASSERT_GREATER_EQUAL(socket_id, 0);
         ASSERT_TRUE(socket_manager->is_socket_valid(socket_id));
     }
 
-    TEST_CASE(BindSocket) {
+    TEST_CASE(BindSocket, "Bind socket to address") {
         auto socket_id = socket_manager->create_socket(AF_INET6, SOCK_STREAM);
         
         sockaddr_in6 addr{};
@@ -90,7 +89,7 @@ TEST_SUITE(SocketManagerTests) {
             reinterpret_cast<sockaddr*>(&addr), sizeof(addr)));
     }
 
-    TEST_CASE(CloseSocket) {
+    TEST_CASE(CloseSocket, "Close socket and verify state") {
         auto socket_id = socket_manager->create_socket(AF_INET6, SOCK_STREAM);
         
         ASSERT_TRUE(socket_manager->is_socket_valid(socket_id));
@@ -100,7 +99,7 @@ TEST_SUITE(SocketManagerTests) {
         ASSERT_FALSE(socket_manager->is_socket_valid(socket_id));
     }
 
-    TEST_CASE(EpollIntegration) {
+    TEST_CASE(EpollIntegration, "Add and remove socket from epoll") {
         auto socket_id = socket_manager->create_socket(AF_INET6, SOCK_STREAM);
         
         ASSERT_NO_THROW(socket_manager->add_to_epoll(socket_id, EPOLLIN));
@@ -121,7 +120,7 @@ TEST_SUITE(PacketProcessorTests) {
         packet_processor = std::make_unique<seeded_vpn::infrastructure::PacketProcessor>();
     }
 
-    TEST_CASE(ProcessValidPacket) {
+    TEST_CASE(ProcessValidPacket, "Process valid IPv6 packet") {
         std::vector<uint8_t> test_packet = {
             0x60, 0x00, 0x00, 0x00,
             0x00, 0x08, 0x11, 0x40,
@@ -137,7 +136,7 @@ TEST_SUITE(PacketProcessorTests) {
         ASSERT_EQUAL(result.protocol_version, 6);
     }
 
-    TEST_CASE(ProcessInvalidPacket) {
+    TEST_CASE(ProcessInvalidPacket, "Process invalid packet and verify rejection") {
         std::vector<uint8_t> invalid_packet = {0x40, 0x00};
         
         auto result = packet_processor->process_packet(invalid_packet);
@@ -145,7 +144,7 @@ TEST_SUITE(PacketProcessorTests) {
         ASSERT_FALSE(result.is_valid);
     }
 
-    TEST_CASE(ValidatePacketChecksum) {
+    TEST_CASE(ValidatePacketChecksum, "Validate packet checksum verification") {
         std::vector<uint8_t> test_packet = {
             0x60, 0x00, 0x00, 0x00,
             0x00, 0x08, 0x11, 0x40,
@@ -158,7 +157,7 @@ TEST_SUITE(PacketProcessorTests) {
         ASSERT_TRUE(packet_processor->validate_checksum(test_packet));
     }
 
-    TEST_CASE(FragmentPacket) {
+    TEST_CASE(FragmentPacket, "Fragment large packet into MTU-sized chunks") {
         std::vector<uint8_t> large_packet(2000, 0x42);
         
         auto fragments = packet_processor->fragment_packet(large_packet, 1280);
@@ -170,7 +169,7 @@ TEST_SUITE(PacketProcessorTests) {
         }
     }
 
-    TEST_CASE(ReassemblePacket) {
+    TEST_CASE(ReassemblePacket, "Reassemble fragmented packet") {
         std::vector<uint8_t> original_packet(2000, 0x42);
         auto fragments = packet_processor->fragment_packet(original_packet, 1280);
         
@@ -195,25 +194,25 @@ TEST_SUITE(ConfigManagerTests) {
         config_manager->initialize();
     }
 
-    TEST_CASE(LoadConfiguration) {
+    TEST_CASE(LoadConfiguration, "Load configuration from file") {
         ASSERT_NO_THROW(config_manager->load_from_file("test_config.yaml"));
     }
 
-    TEST_CASE(GetConfigurationValue) {
+    TEST_CASE(GetConfigurationValue, "Get configuration value by key") {
         config_manager->set_value("test.key", "test_value");
         
         auto value = config_manager->get_value<std::string>("test.key");
         ASSERT_EQUAL(value, "test_value");
     }
 
-    TEST_CASE(ConfigurationValidation) {
+    TEST_CASE(ConfigurationValidation, "Validate configuration settings") {
         config_manager->set_value("server.port", 8080);
         config_manager->set_value("server.threads", 4);
         
         ASSERT_TRUE(config_manager->validate());
     }
 
-    TEST_CASE(EnvironmentVariableOverride) {
+    TEST_CASE(EnvironmentVariableOverride, "Override config with environment variables") {
         setenv("VPN_SERVER_PORT", "9090", 1);
         
         config_manager->load_environment_variables();
@@ -224,7 +223,7 @@ TEST_SUITE(ConfigManagerTests) {
         unsetenv("VPN_SERVER_PORT");
     }
 
-    TEST_CASE(ConfigurationReload) {
+    TEST_CASE(ConfigurationReload, "Reload configuration and verify changes") {
         config_manager->set_value("test.reload", "original");
         
         auto original = config_manager->get_value<std::string>("test.reload");

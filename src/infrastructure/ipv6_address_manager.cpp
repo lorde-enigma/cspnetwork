@@ -28,10 +28,6 @@ IPv6AddressManager::~IPv6AddressManager() {
 domain::IPv6Address IPv6AddressManager::allocate(domain::SeedValue seed) {
     std::lock_guard<std::mutex> lock(mutex_);
     
-    if (!validate_seed(seed)) {
-        return {};
-    }
-    
     domain::IPv6Address address = seedToAddress(seed);
     
     if (!is_available(address)) {
@@ -100,10 +96,6 @@ size_t IPv6AddressManager::get_pool_size() const {
 
 IPv6AddressManager::Result IPv6AddressManager::allocateAddressToInterface(const std::string& interface, domain::SeedValue seed) {
     std::lock_guard<std::mutex> lock(mutex_);
-    
-    if (!validate_seed(seed)) {
-        return Result::INVALID_SEED;
-    }
     
     if (!isValidInterface(interface)) {
         return Result::INTERFACE_NOT_FOUND;
@@ -214,10 +206,6 @@ std::string IPv6AddressManager::getCacheKey(const std::string& interface, const 
 bool IPv6AddressManager::executeCommand(const std::string& command) {
     int result = std::system(command.c_str());
     return WEXITSTATUS(result) == 0;
-}
-
-bool IPv6AddressManager::validate_seed(domain::SeedValue seed) const {
-    return seed != 0;
 }
 
 void IPv6AddressManager::clearCache() {

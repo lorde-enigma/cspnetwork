@@ -10,7 +10,7 @@ namespace seeded_vpn::infrastructure {
 
 class SeededSystemMonitor {
 public:
-    explicit SeededSystemMonitor(std::shared_ptr<domain::Logger> logger);
+    explicit SeededSystemMonitor(std::shared_ptr<domain::ILogger> logger);
     ~SeededSystemMonitor();
 
     void start();
@@ -30,7 +30,7 @@ private:
     
     size_t getUsedIPv6Count();
     
-    std::shared_ptr<domain::Logger> logger_;
+    std::shared_ptr<domain::ILogger> logger_;
     std::atomic<bool> running_;
     std::thread monitorThread_;
     std::chrono::seconds checkInterval_;

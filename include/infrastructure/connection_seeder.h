@@ -9,6 +9,7 @@
 #include <mutex>
 #include <array>
 #include <random>
+#include <atomic>
 
 namespace seeded_vpn::infrastructure {
 

@@ -56,13 +56,13 @@ int main(int argc, char* argv[]) {
     }
 
     try {
-        auto logger = std::make_shared<infrastructure::FileLogger>("client_generator.log");
-        auto config_manager = std::make_shared<infrastructure::ConfigManager>();
-        config_manager->load_from_file("config/default.yaml");
+        auto logger = std::make_shared<infrastructure::FileSystemLogger>("client_generator.log");
+        CipherProxy::Infrastructure::ConfigManager& config_manager = CipherProxy::Infrastructure::ConfigManager::instance();
+        config_manager.load_config("config/default.yaml");
         
-        auto seed_generator = std::make_shared<infrastructure::SeededGenerator>();
+        auto seed_generator = std::make_shared<infrastructure::ConcreteSeedGenerator>();
         auto seed_manager = std::make_shared<domain::SeedManager>(seed_generator);
-        auto address_manager = std::make_shared<infrastructure::IPv6AddressRepository>();
+        auto address_manager = std::make_shared<seeded_vpn::infrastructure::IPv6AddressManager>();
         auto address_pool_manager = std::make_shared<domain::AddressPoolManager>(address_manager, logger);
         
         auto client_generator = std::make_shared<application::ClientGeneratorService>(
