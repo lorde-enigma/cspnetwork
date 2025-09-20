@@ -145,11 +145,15 @@ domain::IPv6Address IPv6AddressManager::seedToAddress(domain::SeedValue seed) co
     EVP_MD_CTX_free(ctx);
     
     domain::IPv6Address addr;
-    addr[0] = 0xfd;
-    addr[1] = 0x00;
+    addr[0] = 0x2a;
+    addr[1] = 0x0e;
+    addr[2] = 0xb1;
+    addr[3] = 0x07;
+    addr[4] = 0x1e;
+    addr[5] = 0xf0;
     
-    for (int i = 2; i < 16; i++) {
-        addr[i] = hash[i];
+    for (int i = 6; i < 16; i++) {
+        addr[i] = hash[i - 6];
     }
     
     return addr;
