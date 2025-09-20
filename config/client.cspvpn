@@ -1,0 +1,22 @@
+# csp network vpn client configuration
+# similar to openvpn format
+
+# server connection
+remote localhost 8080
+
+# client identification
+client-id my-laptop
+auth-token secret-auth-token-12345
+
+# connection settings
+protocol tcp
+keepalive 30
+connect-timeout 10
+auto-reconnect true
+
+# logging
+log-level info
+
+# optional: custom routes
+# route 192.168.1.0 255.255.255.0
+# route 10.0.0.0 255.0.0.0

@@ -1,0 +1,22 @@
+# csp network vpn client configuration (yaml format)
+
+server:
+  host: localhost
+  port: 8080
+
+client_id: my-laptop
+auth_token: secret-auth-token-12345
+
+protocol: tcp
+keepalive_interval: 30
+connection_timeout: 10
+auto_reconnect: true
+
+log_level: info
+
+# optional routing configuration
+routes:
+  - network: "192.168.1.0/24"
+    gateway: "10.8.0.1"
+  - network: "10.0.0.0/8" 
+    gateway: "10.8.0.1"

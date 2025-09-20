@@ -1,0 +1,37 @@
+server:
+  port: 8080
+  interface: "::"
+  threads: 4
+
+vpn:
+  interface_name: "vpn-seeded"
+  ipv6_prefix: "fd00::/64"
+  mtu: 1280
+  seed_file: "/etc/cspnetwork/seeds.dat"
+
+crypto:
+  algorithm: "AES-256-GCM"
+  key_derivation: "PBKDF2"
+  iterations: 100000
+
+network:
+  tunnel_type: "tun"
+  routing_table: 200
+  firewall_mark: 0x1000
+
+logging:
+  level: "info"
+  file: "/var/log/vpn/cspnetwork.log"
+  max_size: "10MB"
+  rotate: true
+
+monitoring:
+  enable_metrics: true
+  metrics_port: 8081
+  health_check_interval: 30
+
+security:
+  max_connections: 1000
+  connection_timeout: 300
+  rate_limit: 100
+  enable_ddos_protection: true
