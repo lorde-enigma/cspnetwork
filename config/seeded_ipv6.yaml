@@ -10,17 +10,17 @@ server:
 # Seeded IPv6 Configuration
 seeded_ipv6:
   # Interface where IPv6 addresses will be allocated
-  interface: "tun0"
+  interface: "eno1"
   
-  # Base IPv6 prefix for unique local addresses
-  # Format: fd00::/8 (RFC 4193 Unique Local IPv6 Unicast Addresses)
-  prefix: "fd00::"
+  # Base IPv6 prefix for production addresses
+  # Using the same prefix as cipherproxy
+  prefix: "2a0e:b107:1ef0::"
   
   # Seed strategy for address generation
-  seed_strategy: "per_client"  # per_client, per_connection, per_domain
+  seed_strategy: "per_domain"  # per_client, per_connection, per_domain
   
   # Base seed for deterministic generation
-  base_seed: 12345678901234567890
+  base_seed: "alakasan"
   
   # Seed rotation interval (in seconds)
   rotation_interval: 3600

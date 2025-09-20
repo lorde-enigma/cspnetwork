@@ -7,6 +7,7 @@
 #include <iostream>
 #include <iomanip>
 #include <cstring>
+#include <openssl/evp.h>
 
 namespace seeded_vpn::infrastructure {
 
@@ -131,22 +132,46 @@ bool IPv6AddressManager::checkAddressExists(const std::string& interface, const 
     return executeCommand(command);
 }
 
-domain::IPv6Address IPv6AddressManager::seedToAddress(domain::SeedValue seed) const {
-    domain::IPv6Address address{};
+domain::IPv6Address IPv6AddressManager::seedToAddress(const std::string& seed) const {
+    std::hash<std::string> hasher;
+    uint64_t numericSeed = hasher(seed);
     
-    std::hash<domain::SeedValue> hasher;
-    uint64_t hash1 = hasher(seed);
-    uint64_t hash2 = hasher(seed ^ 0xAAAAAAAAAAAAAAAAULL);
+    std::string context = "ipv6:" + seed;
+    std::string input = std::to_string(numericSeed) + ":" + context;
     
-    std::memcpy(address.data(), &hash1, 8);
-    std::memcpy(address.data() + 8, &hash2, 8);
+    std::array<uint8_t, 32> hash;
+    EVP_MD_CTX* ctx = EVP_MD_CTX_new();
+    EVP_DigestInit_ex(ctx, EVP_sha256(), nullptr);
+    EVP_DigestUpdate(ctx, input.c_str(), input.length());
+    unsigned int hashLen;
+    EVP_DigestFinal_ex(ctx, hash.data(), &hashLen);
+    EVP_MD_CTX_free(ctx);
     
-    address[0] = 0xfd;
-    address[1] = 0x00;
-    address[2] = 0x13;
-    address[3] = 0x37;
+    std::string prefix = "2a0e:b107:1ef0:";
+    int prefixGroups = 3;
+    int groupsToAdd = 8 - prefixGroups;
     
-    return address;
+    std::stringstream ss;
+    ss << prefix;
+    
+    for (int group = 0; group < groupsToAdd; ++group) {
+        if (group > 0) {
+            ss << ":";
+        }
+        
+        int hashOffset = (group * 2) % 32;
+        uint16_t segment = (static_cast<uint16_t>(hash[hashOffset]) << 8) | 
+                          static_cast<uint16_t>(hash[hashOffset + 1]);
+        ss << std::hex << std::setfill('0') << std::setw(4) << segment;
+    }
+    
+    std::string result = ss.str();
+    
+    domain::IPv6Address addr;
+    auto segments = stringToSegments(result);
+    std::copy(segments.begin(), segments.end(), addr.segments.begin());
+    
+    return addr;
 }
 
 std::string IPv6AddressManager::addressToString(const domain::IPv6Address& address) const {
