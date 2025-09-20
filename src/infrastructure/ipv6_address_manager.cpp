@@ -144,29 +144,13 @@ domain::IPv6Address IPv6AddressManager::seedToAddress(domain::SeedValue seed) co
     EVP_DigestFinal_ex(ctx, hash.data(), &hashLen);
     EVP_MD_CTX_free(ctx);
     
-    std::string prefix = "2a0e:b107:1ef0:";
-    int prefixGroups = 3;
-    int groupsToAdd = 8 - prefixGroups;
-    
-    std::stringstream ss;
-    ss << prefix;
-    
-    for (int group = 0; group < groupsToAdd; ++group) {
-        if (group > 0) {
-            ss << ":";
-        }
-        
-        int hashOffset = (group * 2) % 32;
-        uint16_t segment = (static_cast<uint16_t>(hash[hashOffset]) << 8) | 
-                          static_cast<uint16_t>(hash[hashOffset + 1]);
-        ss << std::hex << std::setfill('0') << std::setw(4) << segment;
-    }
-    
-    std::string result = ss.str();
-    
     domain::IPv6Address addr;
-    auto segments = stringToSegments(result);
-    std::copy(segments.begin(), segments.end(), addr.segments.begin());
+    addr[0] = 0xfd;
+    addr[1] = 0x00;
+    
+    for (int i = 2; i < 16; i++) {
+        addr[i] = hash[i];
+    }
     
     return addr;
 }
