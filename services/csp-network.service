@@ -1,6 +1,6 @@
 [Unit]
 Description=CSP Network - Clean Architecture VPN Server
-Documentation=https://github.com/lorde-enigma/cspnetwork
+Documentation=https://github.com/lorde-enigma/cspnetworkb v
 After=network.target
 Wants=network.target
 

@@ -1,15 +1,15 @@
 #pragma once
 
-#include "domain/interfaces.h"
+#include "../domain/interfaces.h"
 #include <random>
 #include <unordered_map>
 #include <mutex>
 
 namespace seeded_vpn::infrastructure {
 
-class CryptoSeedGenerator : public domain::ISeedGenerator {
+class SeededGenerator : public domain::ISeedGenerator {
 public:
-    CryptoSeedGenerator();
+    SeededGenerator();
     
     domain::SeedValue generate(const domain::SeedContext& context) override;
     void set_strategy(domain::SeedStrategy strategy) override;
@@ -37,9 +37,9 @@ private:
     bool should_rotate();
 };
 
-class IPv6AddressManager : public domain::IIPv6AddressManager {
+class IPv6AddressRepository : public domain::IIPv6AddressManager {
 public:
-    IPv6AddressManager(const std::string& ipv6_prefix);
+    IPv6AddressRepository();
     
     domain::IPv6Address allocate(domain::SeedValue seed) override;
     void release(const domain::IPv6Address& address) override;

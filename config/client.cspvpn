@@ -7,6 +7,8 @@ remote localhost 8080
 # client identification
 client-id my-laptop
 auth-token secret-auth-token-12345
+client-seed 1234567890
+exit-ip 10.8.0.123
 
 # connection settings
 protocol tcp
@@ -17,6 +19,5 @@ auto-reconnect true
 # logging
 log-level info
 
-# optional: custom routes
-# route 192.168.1.0 255.255.255.0
-# route 10.0.0.0 255.0.0.0
+# seed-based routing (managed automatically)
+# each client gets unique exit IP based on seed

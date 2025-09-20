@@ -46,7 +46,6 @@ size_t ConnectionCache::get_active_connection_count() const {
 
 std::vector<std::string> ConnectionCache::get_active_clients() const {
     std::vector<std::string> active_clients;
-    // This would require iteration support in LRUCache
     return active_clients;
 }
 

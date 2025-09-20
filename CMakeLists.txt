@@ -65,23 +65,32 @@ add_executable(cspvpn-client
     src/domain/entities.cpp
 )
 
-file(GLOB_RECURSE TEST_FRAMEWORK_SOURCES "src/testing/*.cpp")
-file(GLOB_RECURSE UNIT_TEST_SOURCES "tests/unit/*.cpp")
-file(GLOB_RECURSE INTEGRATION_TEST_SOURCES "tests/integration/*.cpp")
-file(GLOB_RECURSE PERFORMANCE_TEST_SOURCES "tests/performance/*.cpp")
-
-set(TEST_SOURCES
-    ${TEST_FRAMEWORK_SOURCES}
-    ${UNIT_TEST_SOURCES}
-    ${INTEGRATION_TEST_SOURCES}
-    ${PERFORMANCE_TEST_SOURCES}
+add_executable(cspvpn-gen
+    src/generator_main.cpp
+    src/application/client_generator.cpp
+    src/infrastructure/config_manager.cpp
+    src/infrastructure/repositories.cpp
+    src/infrastructure/seed_generator.cpp
+    src/domain/entities.cpp
 )
 
-add_executable(cspnetwork-tests
-    tests/test_main.cpp
-    ${VPN_SOURCES}
-    ${TEST_SOURCES}
-)
+# file(GLOB_RECURSE TEST_FRAMEWORK_SOURCES "src/testing/*.cpp")
+# file(GLOB_RECURSE UNIT_TEST_SOURCES "tests/unit/*.cpp")
+# file(GLOB_RECURSE INTEGRATION_TEST_SOURCES "tests/integration/*.cpp")
+# file(GLOB_RECURSE PERFORMANCE_TEST_SOURCES "tests/performance/*.cpp")
+
+# set(TEST_SOURCES
+#     ${TEST_FRAMEWORK_SOURCES}
+#     ${UNIT_TEST_SOURCES}
+#     ${INTEGRATION_TEST_SOURCES}
+#     ${PERFORMANCE_TEST_SOURCES}
+# )
+
+# add_executable(cspnetwork-tests
+#     tests/test_main.cpp
+#     ${VPN_SOURCES}
+#     ${TEST_SOURCES}
+# )
 
 target_link_libraries(cspnetwork
     Threads::Threads
@@ -99,7 +108,7 @@ target_link_libraries(cspvpn-client
     dl
 )
 
-target_link_libraries(cspnetwork-tests
+target_link_libraries(cspvpn-gen
     Threads::Threads
     ${YAMLCPP_LIBRARIES}
     OpenSSL::SSL
@@ -107,13 +116,23 @@ target_link_libraries(cspnetwork-tests
     dl
 )
 
+# target_link_libraries(cspnetwork-tests
+#     Threads::Threads
+#     ${YAMLCPP_LIBRARIES}
+#     OpenSSL::SSL
+#     OpenSSL::Crypto
+#     dl
+# )
+
 target_include_directories(cspnetwork PRIVATE ${YAMLCPP_INCLUDE_DIRS})
 target_include_directories(cspvpn-client PRIVATE ${YAMLCPP_INCLUDE_DIRS})
-target_include_directories(cspnetwork-tests PRIVATE ${YAMLCPP_INCLUDE_DIRS})
+target_include_directories(cspvpn-gen PRIVATE ${YAMLCPP_INCLUDE_DIRS})
+# target_include_directories(cspnetwork-tests PRIVATE ${YAMLCPP_INCLUDE_DIRS})
 
 target_compile_options(cspnetwork PRIVATE ${YAMLCPP_CFLAGS_OTHER})
 target_compile_options(cspvpn-client PRIVATE ${YAMLCPP_CFLAGS_OTHER})
-target_compile_options(cspnetwork-tests PRIVATE ${YAMLCPP_CFLAGS_OTHER})
+target_compile_options(cspvpn-gen PRIVATE ${YAMLCPP_CFLAGS_OTHER})
+# target_compile_options(cspnetwork-tests PRIVATE ${YAMLCPP_CFLAGS_OTHER})
 
 set_target_properties(cspnetwork PROPERTIES
     RUNTIME_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}
@@ -123,13 +142,17 @@ set_target_properties(cspvpn-client PROPERTIES
     RUNTIME_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}
 )
 
-set_target_properties(cspnetwork-tests PROPERTIES
+set_target_properties(cspvpn-gen PROPERTIES
     RUNTIME_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}
 )
 
+# set_target_properties(cspnetwork-tests PROPERTIES
+#     RUNTIME_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}
+# )
+
 set(CMAKE_INSTALL_PREFIX "/usr/local" CACHE PATH "Installation prefix")
 
-install(TARGETS cspnetwork cspvpn-client
+install(TARGETS cspnetwork cspvpn-client cspvpn-gen
     RUNTIME DESTINATION bin
     COMPONENT Runtime
 )
@@ -218,26 +241,26 @@ add_custom_target(uninstall
     COMMENT "Uninstalling CSP Network VPN"
 )
 
-add_custom_target(run-tests
-    COMMAND cspnetwork-tests
-    DEPENDS cspnetwork-tests
-    COMMENT "Running all tests"
-)
+# add_custom_target(run-tests
+#     COMMAND cspnetwork-tests
+#     DEPENDS cspnetwork-tests
+#     COMMENT "Running all tests"
+# )
 
-add_custom_target(run-unit-tests
-    COMMAND cspnetwork-tests --tag unit
-    DEPENDS cspnetwork-tests
-    COMMENT "Running unit tests"
-)
+# add_custom_target(run-unit-tests
+#     COMMAND cspnetwork-tests --tag unit
+#     DEPENDS cspnetwork-tests
+#     COMMENT "Running unit tests"
+# )
 
-add_custom_target(run-integration-tests
-    COMMAND cspnetwork-tests --tag integration
-    DEPENDS cspnetwork-tests
-    COMMENT "Running integration tests"
-)
+# add_custom_target(run-integration-tests
+#     COMMAND cspnetwork-tests --tag integration
+#     DEPENDS cspnetwork-tests
+#     COMMENT "Running integration tests"
+# )
 
-add_custom_target(run-performance-tests
-    COMMAND cspnetwork-tests --tag performance
-    DEPENDS cspnetwork-tests
-    COMMENT "Running performance tests"
-)
+# add_custom_target(run-performance-tests
+#     COMMAND cspnetwork-tests --tag performance
+#     DEPENDS cspnetwork-tests
+#     COMMENT "Running performance tests"
+# )

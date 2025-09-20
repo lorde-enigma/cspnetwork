@@ -20,14 +20,14 @@ std::shared_ptr<application::IAuthenticationUseCase> DependencyFactory::auth_use
 
 std::shared_ptr<domain::ISeedGenerator> DependencyFactory::create_seed_generator() {
     if (!seed_generator_) {
-        seed_generator_ = std::make_shared<infrastructure::CryptoSeedGenerator>();
+        seed_generator_ = std::make_shared<infrastructure::SeededGenerator>();
     }
     return seed_generator_;
 }
 
 std::shared_ptr<domain::IIPv6AddressManager> DependencyFactory::create_ipv6_manager(const std::string& prefix) {
     if (!ipv6_manager_) {
-        ipv6_manager_ = std::make_shared<infrastructure::IPv6AddressManager>(prefix);
+        ipv6_manager_ = std::make_shared<infrastructure::IPv6AddressRepository>();
     }
     return ipv6_manager_;
 }
