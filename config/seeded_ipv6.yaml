@@ -1,0 +1,63 @@
+# CSP Network VPN Configuration Example
+# This shows how the seeded IPv6 system works
+
+server:
+  # Main VPN server settings
+  host: "vpn.example.com"
+  port: 8080
+  protocol: "tcp"
+
+# Seeded IPv6 Configuration
+seeded_ipv6:
+  # Interface where IPv6 addresses will be allocated
+  interface: "tun0"
+  
+  # Base IPv6 prefix for unique local addresses
+  # Format: fd00::/8 (RFC 4193 Unique Local IPv6 Unicast Addresses)
+  prefix: "fd00::"
+  
+  # Seed strategy for address generation
+  seed_strategy: "per_client"  # per_client, per_connection, per_domain
+  
+  # Base seed for deterministic generation
+  base_seed: 12345678901234567890
+  
+  # Seed rotation interval (in seconds)
+  rotation_interval: 3600
+
+# IPv6 Address Pool Management
+address_pool:
+  # Maximum number of concurrent allocations
+  max_allocations: 10000
+  
+  # Cache timeout for allocated addresses
+  cache_timeout: 3600
+  
+  # Enable automatic cleanup
+  auto_cleanup: true
+
+# Client generation settings
+client_generation:
+  # Default configuration format
+  default_format: "cspvpn"  # cspvpn, yaml
+  
+  # Authentication token length
+  token_length: 32
+  
+  # Client ID prefix
+  id_prefix: "csp-client"
+
+# Monitoring and logging
+monitoring:
+  # Enable system monitoring
+  enabled: true
+  
+  # Monitor check interval (seconds)
+  check_interval: 30
+  
+  # IPv6 usage warning threshold
+  ipv6_warning_threshold: 8000
+
+logging:
+  level: "info"
+  file: "/var/log/cspnetwork/generator.log"

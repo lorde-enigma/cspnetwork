@@ -1,5 +1,6 @@
 #include "../include/application/client_generator.h"
 #include "../include/infrastructure/seed_generator.h"
+#include "../include/infrastructure/seeded_connection_manager.h"
 #include <random>
 #include <sstream>
 #include <chrono>
@@ -7,26 +8,42 @@
 
 namespace seeded_vpn::application {
 
-ClientGeneratorService::ClientGeneratorService() {}
-
-ClientGeneratorService::~ClientGeneratorService() = default;
+ClientGeneratorService::ClientGeneratorService(
+    std::shared_ptr<domain::SeedManager> seed_manager,
+    std::shared_ptr<domain::AddressPoolManager> address_pool_manager,
+    std::shared_ptr<domain::ILogger> logger
+) : seed_manager_(seed_manager), 
+    address_pool_manager_(address_pool_manager), 
+    logger_(logger) {}
 
 ClientConfiguration ClientGeneratorService::generate_client(const ClientGenerationRequest& request) {
+    logger_->info("generating client configuration for: " + request.client_name);
+    
     ClientConfiguration config;
     config.client_id = generate_client_id(request.client_name);
-    config.client_name = request.client_name;
+    config.auth_token = generate_auth_token();
     
-    auto seed = request.seed.empty() ? generate_seed() : request.seed;
-    config.seed = seed;
+    domain::SeedValue seed_value;
+    if (!request.requested_seed.empty()) {
+        seed_value = std::stoull(request.requested_seed);
+        config.seed = request.requested_seed;
+        logger_->info("using requested seed: " + config.seed);
+    } else {
+        seed_value = seed_manager_->generate_seed_for_client(config.client_id, 0);
+        config.seed = std::to_string(seed_value);
+        logger_->info("generated seed: " + config.seed);
+    }
     
-    config.exit_ip = seed_to_exit_ip(seed);
-    config.local_ip = "10.8.0.100";
-    config.server_host = "127.0.0.1";
-    config.server_port = 8080;
+    infrastructure::SeededConnectionManager connection_manager("tun0");
+    config.exit_ip = connection_manager.allocateIPv6ForClient(seed_value);
     
-    config.private_key = generate_private_key();
-    config.public_key = generate_public_key(config.private_key);
-    config.server_public_key = get_server_public_key();
+    if (config.exit_ip.empty()) {
+        throw std::runtime_error("failed to allocate ipv6 address for client");
+    }
+    
+    config.config_content = generate_config_file(config, request.config_format);
+    
+    logger_->info("client generated - id: " + config.client_id + ", exit_ip: " + config.exit_ip);
     
     return config;
 }
@@ -111,48 +128,8 @@ std::string ClientGeneratorService::generate_auth_token() {
     return oss.str();
 }
 
-std::string ClientGeneratorService::generate_seed() {
-    std::random_device rd;
-    std::mt19937 gen(rd());
-    std::uniform_int_distribution<> dis(0, 15);
-    
-    std::ostringstream oss;
-    for (int i = 0; i < 32; ++i) {
-        oss << std::hex << dis(gen);
-    }
-    
-    return oss.str();
-}
-
-std::string ClientGeneratorService::seed_to_exit_ip(const std::string& seed) {
-    std::hash<std::string> hasher;
-    auto hash = hasher(seed);
-    
-    uint8_t ip[4];
-    ip[0] = 10;
-    ip[1] = (hash >> 16) & 0xFF;
-    ip[2] = (hash >> 8) & 0xFF;
-    ip[3] = hash & 0xFF;
-    
-    return std::to_string(ip[0]) + "." + 
-           std::to_string(ip[1]) + "." + 
-           std::to_string(ip[2]) + "." + 
-           std::to_string(ip[3]);
-}
-
-std::string ClientGeneratorService::generate_private_key() {
-    return "private-key-placeholder";
-}
-
-std::string ClientGeneratorService::generate_public_key(const std::string& private_key) {
-    return "public-key-" + private_key.substr(0, 8);
-}
-
-std::string ClientGeneratorService::get_server_public_key() {
-    return "server-public-key-placeholder";
-}
-
 bool ClientGeneratorService::revoke_client(const std::string& client_id) {
+    logger_->info("revoking client: " + client_id);
     return true;
 }
 

@@ -1,7 +1,7 @@
 #include "testing/test_framework.h"
 #include "infrastructure/repositories.h"
 #include "infrastructure/async_socket_manager.h"
-#include "infrastructure/packet_processing_pipeline.h"
+#include "infrastructure/packet_processor.h"
 #include "infrastructure/config_manager.h"
 #include <memory>
 
