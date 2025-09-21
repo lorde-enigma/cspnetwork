@@ -52,11 +52,18 @@ add_executable(cspnetwork
     src/infrastructure/thread_management.cpp
     src/infrastructure/vpn_protocol.cpp
     src/infrastructure/ipv6_address_manager.cpp
+    src/infrastructure/ip_pool.cpp
+    src/infrastructure/crc32.cpp
     src/presentation/server.cpp
     src/presentation/cli.cpp
     src/presentation/container.cpp
     src/presentation/factory.cpp
+    src/presentation/udp_tunnel_server.cpp
+    src/protocol/udp_tunnel_protocol.cpp
+    src/protocol/tunnel_packet.cpp
     src/domain/entities.cpp
+    src/domain/connection_context.cpp
+    src/domain/vpn_config.cpp
 )
 
 add_executable(cspvpn-client

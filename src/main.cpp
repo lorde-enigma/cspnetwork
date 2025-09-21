@@ -2,10 +2,10 @@
 #include <signal.h>
 #include <thread>
 #include <chrono>
-#include "../include/presentation/server.h"
-#include "../include/presentation/container.h"
+#include "../include/presentation/udp_tunnel_server.h"
+#include "../include/domain/vpn_config.h"
 
-std::unique_ptr<seeded_vpn::presentation::VPNRestServer> server;
+std::unique_ptr<seeded_vpn::presentation::UDPTunnelServer> server;
 
 void signal_handler(int signal) {
     if (server) {
@@ -16,23 +16,23 @@ void signal_handler(int signal) {
 }
 
 void show_help() {
-    std::cout << "ciphers systems private network\n\n";
+    std::cout << "ciphers systems private network - udp tunnel mode\n\n";
     std::cout << "usage: cspnetwork [OPTIONS]\n\n";
     std::cout << "options:\n";
-    std::cout << "  -p, --port PORT      set server port (default: 8080)\n";
+    std::cout << "  -p, --port PORT      set tunnel server port (default: 1194)\n";
     std::cout << "  -c, --config FILE    set configuration file path\n";
     std::cout << "  -h, --help           show this help message\n";
     std::cout << "  -v, --version        show version information\n\n";
     std::cout << "examples:\n";
-    std::cout << "  cspnetwork                              # run on default port 8080\n";
+    std::cout << "  cspnetwork                              # run on default port 1194\n";
     std::cout << "  cspnetwork -p 9000                      # run on port 9000\n";
     std::cout << "  cspnetwork --config /etc/vpn/config.yaml  # use custom config\n";
 }
 
 void show_version() {
-    std::cout << "Ciphers Systems Private Network v1.0.0\n";
+    std::cout << "Ciphers Systems Private Network v2.0.0 - UDP Tunnel Mode\n";
     std::cout << "built with Clean Architecture principles\n";
-    std::cout << "C++20 implementation with high-performance networking\n";
+    std::cout << "C++20 implementation with high-performance UDP tunneling\n";
 }
 
 int main(int argc, char* argv[]) {
@@ -40,8 +40,8 @@ int main(int argc, char* argv[]) {
     signal(SIGTERM, signal_handler);
     
     try {
-        uint16_t port = 8080;
-        std::string config_file = "config.yaml";
+        uint16_t port = 1194;
+        std::string config_file = "config/default.yaml";
         
         for (int i = 1; i < argc; ++i) {
             std::string arg = argv[i];
@@ -80,15 +80,17 @@ int main(int argc, char* argv[]) {
             }
         }
         
-        std::cout << "seeded vpn server starting..." << std::endl;
+        std::cout << "seeded vpn udp tunnel server starting..." << std::endl;
         
-        auto& container = seeded_vpn::presentation::DependencyContainer::instance();
-        container.initialize(config_file);
+        auto config = std::make_shared<seeded_vpn::domain::VPNConfig>(config_file);
+        config->set_server_port(port);
         
-        server = std::make_unique<seeded_vpn::presentation::VPNRestServer>(port);
+        server = std::make_unique<seeded_vpn::presentation::UDPTunnelServer>(config);
         server->start();
         
-        std::cout << "seeded vpn server running on port " << port << std::endl;
+        std::cout << "seeded vpn udp tunnel server running on port " << port << std::endl;
+        std::cout << "tunnel interface: " << config->get_tunnel_interface_name() << std::endl;
+        std::cout << "ip range: " << config->get_ip_range() << std::endl;
         std::cout << "press ctrl+c to stop" << std::endl;
         
         while (server->is_running()) {
