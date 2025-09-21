@@ -1,0 +1,22 @@
+# csp network vpn client configuration
+# generated client configuration
+
+# server connection
+remote localhost 8080
+
+# client identification
+client-id enigmaweb-20250921-052531-6408
+auth-token csp-token-b773570fbdfad580ee92f3c0392cfc5d
+client-seed 4516414090228029725
+exit-ip 2a0e:b107:1ef0:e73c:88c2:2ac4:2596:cf9c
+
+# connection settings
+protocol tcp
+keepalive 30
+connect-timeout 10
+auto-reconnect true
+
+# logging
+log-level info
+
+# routes will be managed by seed-based exit ip

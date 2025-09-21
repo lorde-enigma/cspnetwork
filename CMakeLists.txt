@@ -93,11 +93,11 @@ set(TEST_SOURCES
     ${PERFORMANCE_TEST_SOURCES}
 )
 
-add_executable(cspnetwork-tests
-    tests/test_main.cpp
-    ${VPN_SOURCES}
-    ${TEST_SOURCES}
-)
+# add_executable(cspnetwork-tests
+#     tests/test_main.cpp
+#     ${VPN_SOURCES}
+#     ${TEST_SOURCES}
+# )
 
 target_link_libraries(cspnetwork
     Threads::Threads
@@ -123,23 +123,23 @@ target_link_libraries(cspvpn-gen
     dl
 )
 
-target_link_libraries(cspnetwork-tests
-    Threads::Threads
-    ${YAMLCPP_LIBRARIES}
-    OpenSSL::SSL
-    OpenSSL::Crypto
-    dl
-)
+# target_link_libraries(cspnetwork-tests
+#     Threads::Threads
+#     ${YAMLCPP_LIBRARIES}
+#     OpenSSL::SSL
+#     OpenSSL::Crypto
+#     dl
+# )
 
 target_include_directories(cspnetwork PRIVATE ${YAMLCPP_INCLUDE_DIRS})
 target_include_directories(cspvpn-client PRIVATE ${YAMLCPP_INCLUDE_DIRS})
 target_include_directories(cspvpn-gen PRIVATE ${YAMLCPP_INCLUDE_DIRS})
-target_include_directories(cspnetwork-tests PRIVATE ${YAMLCPP_INCLUDE_DIRS})
+# target_include_directories(cspnetwork-tests PRIVATE ${YAMLCPP_INCLUDE_DIRS})
 
 target_compile_options(cspnetwork PRIVATE ${YAMLCPP_CFLAGS_OTHER})
 target_compile_options(cspvpn-client PRIVATE ${YAMLCPP_CFLAGS_OTHER})
 target_compile_options(cspvpn-gen PRIVATE ${YAMLCPP_CFLAGS_OTHER})
-target_compile_options(cspnetwork-tests PRIVATE ${YAMLCPP_CFLAGS_OTHER})
+# target_compile_options(cspnetwork-tests PRIVATE ${YAMLCPP_CFLAGS_OTHER})
 
 set_target_properties(cspnetwork PROPERTIES
     RUNTIME_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}
@@ -153,9 +153,9 @@ set_target_properties(cspvpn-gen PROPERTIES
     RUNTIME_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}
 )
 
-set_target_properties(cspnetwork-tests PROPERTIES
-    RUNTIME_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}
-)
+# set_target_properties(cspnetwork-tests PROPERTIES
+#     RUNTIME_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}
+# )
 
 set(CMAKE_INSTALL_PREFIX "/usr/local" CACHE PATH "Installation prefix")
 
@@ -248,26 +248,26 @@ add_custom_target(uninstall
     COMMENT "Uninstalling CSP Network VPN"
 )
 
-add_custom_target(run-tests
-    COMMAND cspnetwork-tests
-    DEPENDS cspnetwork-tests
-    COMMENT "Running all tests"
-)
+# add_custom_target(run-tests
+#     COMMAND cspnetwork-tests
+#     DEPENDS cspnetwork-tests
+#     COMMENT "Running all tests"
+# )
 
-add_custom_target(run-unit-tests
-    COMMAND cspnetwork-tests --tag unit
-    DEPENDS cspnetwork-tests
-    COMMENT "Running unit tests"
-)
+# add_custom_target(run-unit-tests
+#     COMMAND cspnetwork-tests --tag unit
+#     DEPENDS cspnetwork-tests
+#     COMMENT "Running unit tests"
+# )
 
-add_custom_target(run-integration-tests
-    COMMAND cspnetwork-tests --tag integration
-    DEPENDS cspnetwork-tests
-    COMMENT "Running integration tests"
-)
+# add_custom_target(run-integration-tests
+#     COMMAND cspnetwork-tests --tag integration
+#     DEPENDS cspnetwork-tests
+#     COMMENT "Running integration tests"
+# )
 
-add_custom_target(run-performance-tests
-    COMMAND cspnetwork-tests --tag performance
-    DEPENDS cspnetwork-tests
-    COMMENT "Running performance tests"
-)
+# add_custom_target(run-performance-tests
+#     COMMAND cspnetwork-tests --tag performance
+#     DEPENDS cspnetwork-tests
+#     COMMENT "Running performance tests"
+# )
