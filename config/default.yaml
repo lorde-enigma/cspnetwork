@@ -4,10 +4,17 @@ server:
   threads: 4
 
 vpn:
-  interface_name: "vpn-seeded"
-  ipv6_prefix: "fd00::/64"
+  interface_name: "enp5s0"
+  ipv6_prefix: "2a0e:b107:1ef0::"
   mtu: 1280
   seed_file: "/etc/cspnetwork/seeds.dat"
+
+seeded_ipv6:
+  interface: "enp5s0"
+  prefix: "2a0e:b107:1ef0::"
+  seed_strategy: "per_domain"
+  base_seed: "alakasan"
+  rotation_interval: 3600
 
 crypto:
   algorithm: "AES-256-GCM"

@@ -17,7 +17,7 @@ IPv6AddressManager& IPv6AddressManager::getInstance() {
 }
 
 IPv6AddressManager::IPv6AddressManager() 
-    : defaultInterface_("csp0")
+    : defaultInterface_("enp5s0")
     , addressPrefix_(DEFAULT_PREFIX)
     , maxPoolSize_(DEFAULT_POOL_SIZE) {
 }
@@ -134,6 +134,32 @@ bool IPv6AddressManager::checkAddressExists(const std::string& interface, const 
 
 domain::IPv6Address IPv6AddressManager::seedToAddress(domain::SeedValue seed) const {
     std::string domain = addressPrefix_.empty() ? DEFAULT_PREFIX : addressPrefix_;
+    std::string input = std::to_string(seed) + ":ipv6:" + domain;
+    
+    std::array<uint8_t, 32> hash;
+    EVP_MD_CTX* ctx = EVP_MD_CTX_new();
+    EVP_DigestInit_ex(ctx, EVP_sha256(), nullptr);
+    EVP_DigestUpdate(ctx, input.c_str(), input.length());
+    unsigned int hashLen;
+    EVP_DigestFinal_ex(ctx, hash.data(), &hashLen);
+    EVP_MD_CTX_free(ctx);
+    
+    domain::IPv6Address addr;
+    addr[0] = 0x2a;
+    addr[1] = 0x0e;
+    addr[2] = 0xb1;
+    addr[3] = 0x07;
+    addr[4] = 0x1e;
+    addr[5] = 0xf0;
+    
+    for (int i = 6; i < 16; i++) {
+        addr[i] = hash[i - 6];
+    }
+    
+    return addr;
+}
+
+domain::IPv6Address IPv6AddressManager::seedToAddress(domain::SeedValue seed, const std::string& domain) const {
     std::string input = std::to_string(seed) + ":ipv6:" + domain;
     
     std::array<uint8_t, 32> hash;
@@ -285,7 +311,7 @@ SeededIPv6Manager::AllocationResult SeededIPv6Manager::allocateForClient(const d
     }
     
     domain::SeedValue seed = seedGenerator_->generate(context);
-    std::string targetInterface = interface.empty() ? "csp0" : interface;
+    std::string targetInterface = interface.empty() ? "enp5s0" : interface;
     
     IPv6AddressManager::Result allocResult = addressManager_->allocateAddressToInterface(targetInterface, seed);
     

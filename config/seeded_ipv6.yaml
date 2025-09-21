@@ -10,7 +10,7 @@ server:
 # Seeded IPv6 Configuration
 seeded_ipv6:
   # Interface where IPv6 addresses will be allocated
-  interface: "eno1"
+  interface: "enp5s0"
   
   # Base IPv6 prefix for production addresses
   # Using the same prefix as cipherproxy

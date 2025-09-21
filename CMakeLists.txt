@@ -44,7 +44,6 @@ add_executable(cspnetwork
     src/infrastructure/tun_interface.cpp
     src/infrastructure/async_socket_manager.cpp
     src/infrastructure/cache_manager.cpp
-    src/infrastructure/memory_pool_manager.cpp
     src/infrastructure/monitoring_system.cpp
     src/infrastructure/packet_processing_pipeline.cpp
     src/infrastructure/repositories.cpp

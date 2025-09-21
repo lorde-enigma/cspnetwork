@@ -92,9 +92,19 @@ std::string ConnectionSeeder::generateServerProfile() const {
 }
 
 uint32_t ConnectionSeeder::generateUint32(uint32_t min, uint32_t max, const std::string& context) const {
+    if (min > max) {
+        std::swap(min, max);
+    }
+    
     auto hash = generateHash("uint32:" + context);
     uint32_t value = hashToUint32(hash);
-    return min + (value % (max - min + 1));
+    
+    if (min == max) {
+        return min;
+    }
+    
+    uint64_t range = static_cast<uint64_t>(max) - static_cast<uint64_t>(min) + 1;
+    return min + (value % range);
 }
 
 std::vector<uint8_t> ConnectionSeeder::generateBytes(size_t size, const std::string& context) const {
@@ -121,8 +131,8 @@ std::vector<uint8_t> ConnectionSeeder::generateBytes(size_t size, const std::str
 }
 
 bool ConnectionSeeder::generateBool(double probability, const std::string& context) const {
-    uint32_t value = generateUint32(0, UINT32_MAX, "bool:" + context);
-    double normalized = static_cast<double>(value) / UINT32_MAX;
+    uint32_t value = generateUint32(0, UINT32_MAX - 1, "bool:" + context);
+    double normalized = static_cast<double>(value) / (UINT32_MAX - 1);
     return normalized < probability;
 }
 

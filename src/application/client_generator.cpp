@@ -35,32 +35,17 @@ ClientConfiguration ClientGeneratorService::generate_client(const ClientGenerati
         logger_->info("generated seed: " + config.seed);
     }
     
-    auto seed_gen = std::make_shared<infrastructure::ConcreteSeedGenerator>();
-    infrastructure::SeededConnectionManager connection_manager(seed_gen);
+    auto& ipv6_manager = infrastructure::IPv6AddressManager::getInstance();
+    auto ipv6_address = ipv6_manager.seedToAddress(seed_value, config.client_id);
     
-    infrastructure::SeededConnectionManager::ConnectionConfig conn_config;
-    conn_config.clientId = config.client_id;
-    conn_config.interfaceName = "tun0";
-    conn_config.strategy = domain::SeedStrategy::PER_CONNECTION;
-    conn_config.enableStealth = true;
-    conn_config.sessionTimeout = 3600;
-    
-    auto connection_id = connection_manager.establishConnection(conn_config);
-    auto connection = connection_manager.getConnection(connection_id);
-    
-    if (connection) {
-        std::ostringstream oss;
-        const auto& addr = connection->assignedAddress;
-        oss << std::hex;
-        for (size_t i = 0; i < addr.size(); i += 2) {
-            if (i > 0) oss << ":";
-            oss << std::setfill('0') << std::setw(2) << static_cast<int>(addr[i]);
-            oss << std::setfill('0') << std::setw(2) << static_cast<int>(addr[i+1]);
-        }
-        config.exit_ip = oss.str();
-    } else {
-        throw std::runtime_error("failed to establish connection for client");
+    std::ostringstream oss;
+    oss << std::hex;
+    for (size_t i = 0; i < ipv6_address.size(); i += 2) {
+        if (i > 0) oss << ":";
+        oss << std::setfill('0') << std::setw(2) << static_cast<int>(ipv6_address[i]);
+        oss << std::setfill('0') << std::setw(2) << static_cast<int>(ipv6_address[i+1]);
     }
+    config.exit_ip = oss.str();
     
     config.config_content = generate_config_file(config, request.config_format);
     

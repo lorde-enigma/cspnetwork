@@ -1,2 +1,44 @@
 [2025-09-20T11:34:41.207Z] [info] generating client configuration for: test-client
 [2025-09-20T11:35:29.744Z] [info] generating client configuration for: test-client
+[2025-09-20T14:05:15.671Z] [info] generating client configuration for: test-client
+[2025-09-20T14:05:15.671Z] [info] using requested seed: 123456789
+[2025-09-20T14:46:50.453Z] [info] generating client configuration for: test_client
+[2025-09-20T14:46:50.453Z] [info] generated seed: 10579455850665182382
+[2025-09-20T14:50:37.481Z] [info] generating client configuration for: test_client
+[2025-09-20T14:50:37.481Z] [info] generated seed: 12683154549704260204
+[2025-09-20T14:51:08.846Z] [info] generating client configuration for: test_client
+[2025-09-20T14:51:08.846Z] [info] generated seed: 11752027581156497354
+[2025-09-20T14:54:30.217Z] [info] generating client configuration for: test_client
+[2025-09-20T14:54:30.217Z] [info] generated seed: 8374960171869503167
+[2025-09-20T14:56:52.484Z] [info] generating client configuration for: teste-client
+[2025-09-20T14:56:52.484Z] [info] generated seed: 14440898720857683027
+[2025-09-20T15:11:54.613Z] [info] generating client configuration for: teste-client
+[2025-09-20T15:11:54.613Z] [info] generated seed: 17696180917972433132
+[2025-09-20T15:14:55.773Z] [info] generating client configuration for: teste-client
+[2025-09-20T15:14:55.773Z] [info] generated seed: 16364955847907074377
+[2025-09-21T00:20:09.165Z] [info] generating client configuration for: test-client
+[2025-09-21T00:20:09.166Z] [info] generated seed: 17354908848544546029
+[2025-09-21T00:23:56.286Z] [info] generating client configuration for: test-client
+[2025-09-21T00:23:56.286Z] [info] using requested seed: 12345
+[2025-09-21T00:24:02.878Z] [info] generating client configuration for: test-client
+[2025-09-21T00:24:02.878Z] [info] using requested seed: 12345
+[2025-09-21T00:24:50.460Z] [info] generating client configuration for: test-client
+[2025-09-21T00:24:50.460Z] [info] using requested seed: 12345
+[2025-09-21T00:27:44.342Z] [info] generating client configuration for: test_client_123
+[2025-09-21T00:27:44.342Z] [info] using requested seed: 987654321
+[2025-09-21T00:27:44.344Z] [info] client generated - id: test_client_123-20250921-002744-4052, exit_ip: 2a0e:b107:1ef0:1e0b:b26e:df41:0c49:ca6f
+[2025-09-21T00:27:51.068Z] [info] generating client configuration for: test_client_456
+[2025-09-21T00:27:51.068Z] [info] using requested seed: 123456789
+[2025-09-21T00:27:51.069Z] [info] client generated - id: test_client_456-20250921-002751-2285, exit_ip: 2a0e:b107:1ef0:5ed3:4848:b5cd:4f0e:1083
+[2025-09-21T00:31:18.350Z] [info] generating client configuration for: test_client_123
+[2025-09-21T00:31:18.351Z] [info] using requested seed: 987654321
+[2025-09-21T00:31:18.352Z] [info] client generated - id: test_client_123-20250921-003118-8377, exit_ip: 2a0e:b107:1ef0:d99f:b2eb:b810:74f3:7a39
+[2025-09-21T00:31:32.460Z] [info] generating client configuration for: test1
+[2025-09-21T00:31:32.460Z] [info] using requested seed: 111111111
+[2025-09-21T00:31:32.461Z] [info] client generated - id: test1-20250921-003132-3888, exit_ip: 2a0e:b107:1ef0:e396:3d33:4035:8729:f208
+[2025-09-21T00:31:32.465Z] [info] generating client configuration for: test2
+[2025-09-21T00:31:32.465Z] [info] using requested seed: 222222222
+[2025-09-21T00:31:32.467Z] [info] client generated - id: test2-20250921-003132-1546, exit_ip: 2a0e:b107:1ef0:52bd:2eae:7261:8999:a61b
+[2025-09-21T00:31:32.471Z] [info] generating client configuration for: test3
+[2025-09-21T00:31:32.471Z] [info] using requested seed: 333333333
+[2025-09-21T00:31:32.472Z] [info] client generated - id: test3-20250921-003132-5042, exit_ip: 2a0e:b107:1ef0:e12c:0083:20d8:add9:260b

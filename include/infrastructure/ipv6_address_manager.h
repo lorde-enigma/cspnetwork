@@ -59,6 +59,7 @@ public:
     std::pair<size_t, size_t> getStatistics() const;
     
     domain::IPv6Address seedToAddress(domain::SeedValue seed) const;
+    domain::IPv6Address seedToAddress(domain::SeedValue seed, const std::string& domain) const;
 
 private:
     IPv6AddressManager();
