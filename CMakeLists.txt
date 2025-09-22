@@ -100,11 +100,49 @@ set(TEST_SOURCES
     ${PERFORMANCE_TEST_SOURCES}
 )
 
-# add_executable(cspnetwork-tests
-#     tests/test_main.cpp
-#     ${VPN_SOURCES}
-#     ${TEST_SOURCES}
-# )
+# Test executable
+add_executable(cspnetwork-tests tests/test_main.cpp)
+target_include_directories(cspnetwork-tests PRIVATE include)
+target_link_libraries(cspnetwork-tests
+    Threads::Threads
+    ${YAMLCPP_LIBRARIES}
+    OpenSSL::SSL
+    OpenSSL::Crypto
+    dl
+)
+
+# UDP Tunnel Test Client
+add_executable(cspvpn-client-test 
+    test_client.cpp
+    src/protocol/udp_tunnel_protocol.cpp
+    src/protocol/tunnel_packet.cpp
+    src/infrastructure/crc32.cpp
+)
+target_include_directories(cspvpn-client-test PRIVATE include)
+target_link_libraries(cspvpn-client-test
+    Threads::Threads
+    ${YAMLCPP_LIBRARIES}
+    OpenSSL::SSL
+    OpenSSL::Crypto
+    dl
+)
+
+# Full VPN Client
+add_executable(cspvpn-client-full
+    vpn_client_full.cpp
+    src/protocol/udp_tunnel_protocol.cpp
+    src/protocol/tunnel_packet.cpp
+    src/infrastructure/crc32.cpp
+    src/infrastructure/tun_interface.cpp
+)
+target_include_directories(cspvpn-client-full PRIVATE include)
+target_link_libraries(cspvpn-client-full
+    Threads::Threads
+    ${YAMLCPP_LIBRARIES}
+    OpenSSL::SSL
+    OpenSSL::Crypto
+    dl
+)
 
 target_link_libraries(cspnetwork
     Threads::Threads

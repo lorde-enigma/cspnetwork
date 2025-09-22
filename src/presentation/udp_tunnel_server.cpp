@@ -1,32 +1,31 @@
 #include "presentation/udp_tunnel_server.h"
-#include "infrastructure/logger.h"
 #include "infrastructure/tun_interface.h"
-#include "infrastructure/ip_pool.h"
 #include "protocol/udp_tunnel_protocol.h"
+#include "domain/vpn_config.h"
+#include "infrastructure/ip_pool.h"
+#include "domain/connection_context.h"
+#include "infrastructure/logger.h"
 #include <sys/socket.h>
 #include <netinet/in.h>
 #include <arpa/inet.h>
 #include <unistd.h>
-#include <fcntl.h>
+#include <thread>
 #include <cstring>
-#include <chrono>
-#include <random>
 
-namespace seeded_vpn::presentation {
+using namespace seeded_vpn;
+
+namespace seeded_vpn {
+namespace presentation {
 
 UDPTunnelServer::UDPTunnelServer(std::shared_ptr<domain::VPNConfig> config)
-    : config_(config)
-    , port_(config->get_server_port())
-    , udp_socket_(-1)
-    , running_(false)
-    , max_clients_(100)
-    , session_timeout_(std::chrono::seconds(300))
-{
-    server_tun_ = std::make_unique<infrastructure::TunInterface>();
-    ip_pool_ = std::make_unique<infrastructure::IPPool>(config->get_ip_range());
+    : config_(config), running_(false), udp_socket_(-1),
+      max_clients_(100), session_timeout_(std::chrono::seconds(300)) {
+    
+    port_ = 8080;
+    ip_pool_ = std::make_unique<infrastructure::IPPool>("10.8.0.0/24");
     
     logger_ = [](const std::string& msg) {
-        ::infrastructure::Logger::getInstance().info(msg);
+        std::cout << "[INFO] " << msg << std::endl;
     };
 }
 
@@ -35,55 +34,57 @@ UDPTunnelServer::~UDPTunnelServer() {
 }
 
 bool UDPTunnelServer::start() {
-    std::lock_guard<std::mutex> lock(clients_mutex_);
+    if (running_) return false;
     
-    if (running_.load()) {
-        logger_("server already running");
+    try {
+        setup_server_tun();
+        
+        udp_socket_ = socket(AF_INET6, SOCK_DGRAM, 0);
+        if (udp_socket_ < 0) {
+            throw std::runtime_error("failed to create socket");
+        }
+        
+        int opt = 0;
+        if (setsockopt(udp_socket_, IPPROTO_IPV6, IPV6_V6ONLY, &opt, sizeof(opt)) < 0) {
+            close(udp_socket_);
+            throw std::runtime_error("failed to set socket option");
+        }
+        
+        sockaddr_in6 addr = {};
+        addr.sin6_family = AF_INET6;
+        addr.sin6_addr = in6addr_any;
+        addr.sin6_port = htons(port_);
+        
+        if (bind(udp_socket_, (sockaddr*)&addr, sizeof(addr)) < 0) {
+            close(udp_socket_);
+            throw std::runtime_error("failed to bind socket");
+        }
+        
+        running_ = true;
+        
+        server_thread_ = std::thread(&UDPTunnelServer::server_loop, this);
+        tun_thread_ = std::thread(&UDPTunnelServer::tun_packet_loop, this);
+        cleanup_thread_ = std::thread(&UDPTunnelServer::cleanup_expired_sessions, this);
+        
+        logger_("udp tunnel server started on port " + std::to_string(port_));
+        return true;
+        
+    } catch (const std::exception& e) {
+        logger_("failed to start server: " + std::string(e.what()));
+        stop();
         return false;
     }
-    
-    udp_socket_ = socket(AF_INET6, SOCK_DGRAM, 0);
-    if (udp_socket_ < 0) {
-        logger_("failed to create udp socket");
-        return false;
-    }
-    
-    sockaddr_in6 server_addr{};
-    server_addr.sin6_family = AF_INET6;
-    server_addr.sin6_addr = in6addr_any;
-    server_addr.sin6_port = htons(port_);
-    
-    int dual_stack = 0;
-    if (setsockopt(udp_socket_, IPPROTO_IPV6, IPV6_V6ONLY, &dual_stack, sizeof(dual_stack)) < 0) {
-        logger_("failed to set dual stack mode");
-        close(udp_socket_);
-        return false;
-    }
-    
-    if (bind(udp_socket_, reinterpret_cast<sockaddr*>(&server_addr), sizeof(server_addr)) < 0) {
-        logger_("failed to bind udp socket to port " + std::to_string(port_));
-        close(udp_socket_);
-        return false;
-    }
-    
-    setup_server_tun();
-    
-    running_.store(true);
-    
-    server_thread_ = std::thread(&UDPTunnelServer::server_loop, this);
-    tun_thread_ = std::thread(&UDPTunnelServer::tun_packet_loop, this);
-    cleanup_thread_ = std::thread(&UDPTunnelServer::cleanup_expired_sessions, this);
-    
-    logger_("udp tunnel server started on port " + std::to_string(port_));
-    return true;
 }
 
 void UDPTunnelServer::stop() {
-    if (!running_.load()) {
-        return;
-    }
+    if (!running_) return;
     
-    running_.store(false);
+    running_ = false;
+    
+    if (udp_socket_ != -1) {
+        close(udp_socket_);
+        udp_socket_ = -1;
+    }
     
     if (server_thread_.joinable()) {
         server_thread_.join();
@@ -97,27 +98,11 @@ void UDPTunnelServer::stop() {
         cleanup_thread_.join();
     }
     
-    if (udp_socket_ >= 0) {
-        close(udp_socket_);
-        udp_socket_ = -1;
-    }
-    
-    server_tun_->destroy_tun();
-    
-    {
-        std::lock_guard<std::mutex> lock(clients_mutex_);
-        for (auto& [client_id, client] : active_clients_) {
-            deallocate_client_ip(client_id);
-        }
-        active_clients_.clear();
-        ip_to_client_map_.clear();
-    }
-    
     logger_("udp tunnel server stopped");
 }
 
 bool UDPTunnelServer::is_running() const {
-    return running_.load();
+    return running_;
 }
 
 void UDPTunnelServer::set_config_path(const std::string& config_path) {
@@ -139,200 +124,190 @@ size_t UDPTunnelServer::get_active_clients_count() const {
 
 std::vector<ClientSession> UDPTunnelServer::get_active_sessions() const {
     std::lock_guard<std::mutex> lock(clients_mutex_);
-    
     std::vector<ClientSession> sessions;
-    sessions.reserve(active_clients_.size());
-    
-    for (const auto& [client_id, client] : active_clients_) {
-        sessions.push_back(client);
+    for (const auto& [id, session] : active_clients_) {
+        sessions.push_back(session);
     }
-    
     return sessions;
 }
 
 void UDPTunnelServer::server_loop() {
-    uint8_t buffer[4096];
-    sockaddr_in6 client_addr{};
+    char buffer[4096];
+    sockaddr_in6 client_addr;
     socklen_t addr_len = sizeof(client_addr);
     
-    while (running_.load()) {
-        ssize_t bytes_received = recvfrom(udp_socket_, buffer, sizeof(buffer), 0,
-                                         reinterpret_cast<sockaddr*>(&client_addr), &addr_len);
+    while (running_) {
+        ssize_t received = recvfrom(udp_socket_, buffer, sizeof(buffer), 0,
+                                  (sockaddr*)&client_addr, &addr_len);
         
-        if (bytes_received < 0) {
-            if (running_.load()) {
-                logger_("error receiving udp data");
-            }
-            continue;
+        if (received > 0) {
+            std::vector<uint8_t> packet(buffer, buffer + received);
+            handle_udp_packet(packet, client_addr);
         }
-        
-        if (bytes_received == 0) {
-            continue;
-        }
-        
-        std::vector<uint8_t> packet_data(buffer, buffer + bytes_received);
-        handle_udp_packet(packet_data, client_addr);
     }
 }
 
 void UDPTunnelServer::tun_packet_loop() {
-    uint8_t buffer[4096];
+    char buffer[4096];
     
-    while (running_.load()) {
-        std::vector<uint8_t> ip_packet;
+    while (running_ && server_tun_) {
+        ssize_t received = read(server_tun_->get_fd(), buffer, sizeof(buffer));
+        if (received > 0) {
+            std::vector<uint8_t> packet(buffer, buffer + received);
+            relay_tun_to_clients(packet);
+        }
+    }
+}
+
+void UDPTunnelServer::cleanup_expired_sessions() {
+    while (running_) {
+        std::this_thread::sleep_for(std::chrono::seconds(60));
         
-        std::this_thread::sleep_for(std::chrono::milliseconds(10));
+        std::lock_guard<std::mutex> lock(clients_mutex_);
+        auto it = active_clients_.begin();
+        while (it != active_clients_.end()) {
+            if (it->second.is_expired(session_timeout_)) {
+                ip_to_client_map_.erase(it->second.allocated_ip);
+                deallocate_client_ip(it->first);
+                it = active_clients_.erase(it);
+            } else {
+                ++it;
+            }
+        }
     }
 }
 
 void UDPTunnelServer::handle_udp_packet(const std::vector<uint8_t>& packet, const sockaddr_in6& client_addr) {
-    if (packet.size() < 8) {
-        logger_("received invalid packet from client");
-        return;
-    }
+    auto tunnel_packet = protocol::TunnelPacket::deserialize(packet);
+    if (!tunnel_packet || !tunnel_packet->is_valid()) return;
     
-    uint16_t packet_type = *reinterpret_cast<const uint16_t*>(packet.data());
-    protocol::PacketType type = static_cast<protocol::PacketType>(packet_type);
-    
-    switch (type) {
+    switch (tunnel_packet->get_type()) {
         case protocol::PacketType::AUTH_REQUEST:
-            handle_auth_packet_simple(packet, client_addr);
+            handle_auth_packet(*tunnel_packet, client_addr);
             break;
+            
         case protocol::PacketType::DATA:
-            handle_data_packet_simple(packet, client_addr);
+            handle_data_packet(*tunnel_packet, client_addr);
             break;
+            
         case protocol::PacketType::KEEPALIVE:
-            handle_keepalive_packet_simple(packet, client_addr);
+            handle_keepalive_packet(*tunnel_packet, client_addr);
             break;
+            
         case protocol::PacketType::DISCONNECT:
-            handle_disconnect_packet_simple(packet, client_addr);
-            break;
-        default:
-            logger_("received unknown packet type from client");
+            handle_disconnect_packet(*tunnel_packet, client_addr);
             break;
     }
 }
 
-void UDPTunnelServer::handle_auth_packet_simple(const std::vector<uint8_t>& packet, const sockaddr_in6& client_addr) {
-    logger_("authentication request from client");
+void UDPTunnelServer::handle_auth_packet(const protocol::TunnelPacket& tunnel_packet, const sockaddr_in6& client_addr) {
+    char ip_str[INET6_ADDRSTRLEN];
+    inet_ntop(AF_INET6, &client_addr.sin6_addr, ip_str, sizeof(ip_str));
+    std::string client_id = std::string(ip_str) + ":" + std::to_string(ntohs(client_addr.sin6_port));
     
-    std::string client_id = "client_" + std::to_string(std::chrono::steady_clock::now().time_since_epoch().count());
     std::string allocated_ip;
-    
-    if (!allocate_client_ip(client_id, allocated_ip)) {
-        send_auth_response(client_addr, false, "");
-        return;
-    }
-    
-    {
-        std::lock_guard<std::mutex> lock(clients_mutex_);
-        
-        if (active_clients_.size() >= max_clients_) {
-            deallocate_client_ip(client_id);
-            send_auth_response(client_addr, false, "");
-            return;
-        }
-        
+    if (allocate_client_ip(client_id, allocated_ip)) {
         ClientSession session;
         session.client_id = client_id;
         session.client_address = client_addr;
         session.allocated_ip = allocated_ip;
         session.state = protocol::SessionState::CONNECTED;
-        session.last_activity = std::chrono::steady_clock::now();
         session.session_id = std::stoul(generate_session_id());
+        session.update_activity();
         
-        active_clients_[client_id] = session;
-        ip_to_client_map_[allocated_ip] = client_id;
-    }
-    
-    send_auth_response(client_addr, true, allocated_ip);
-    logger_("client authenticated - id: " + client_id + ", ip: " + allocated_ip);
-}
-
-void UDPTunnelServer::handle_data_packet_simple(const std::vector<uint8_t>& packet, const sockaddr_in6& client_addr) {
-    std::lock_guard<std::mutex> lock(clients_mutex_);
-    
-    for (auto& [id, client] : active_clients_) {
-        if (memcmp(&client.client_address, &client_addr, sizeof(sockaddr_in6)) == 0) {
-            client.update_activity();
-            logger_("data packet received from client: " + id);
-            return;
+        {
+            std::lock_guard<std::mutex> lock(clients_mutex_);
+            active_clients_[client_id] = session;
+            ip_to_client_map_[allocated_ip] = client_id;
         }
-    }
-    
-    logger_("received data from unknown client");
-}
-
-void UDPTunnelServer::handle_keepalive_packet_simple(const std::vector<uint8_t>& packet, const sockaddr_in6& client_addr) {
-    std::lock_guard<std::mutex> lock(clients_mutex_);
-    
-    for (auto& [id, client] : active_clients_) {
-        if (memcmp(&client.client_address, &client_addr, sizeof(sockaddr_in6)) == 0) {
-            client.update_activity();
-            std::vector<uint8_t> keepalive_response = {0x04, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00};
-            send_udp_packet(client_addr, keepalive_response);
-            break;
-        }
+        
+        send_auth_response(client_addr, true, allocated_ip);
+        logger_("client authenticated: " + client_id + " -> " + allocated_ip);
+    } else {
+        send_auth_response(client_addr, false, "");
     }
 }
 
-void UDPTunnelServer::handle_disconnect_packet_simple(const std::vector<uint8_t>& packet, const sockaddr_in6& client_addr) {
-    std::lock_guard<std::mutex> lock(clients_mutex_);
+void UDPTunnelServer::handle_data_packet(const protocol::TunnelPacket& tunnel_packet, const sockaddr_in6& client_addr) {
+    char ip_str[INET6_ADDRSTRLEN];
+    inet_ntop(AF_INET6, &client_addr.sin6_addr, ip_str, sizeof(ip_str));
+    std::string client_id = std::string(ip_str) + ":" + std::to_string(ntohs(client_addr.sin6_port));
     
-    for (auto it = active_clients_.begin(); it != active_clients_.end(); ++it) {
-        if (memcmp(&it->second.client_address, &client_addr, sizeof(sockaddr_in6)) == 0) {
-            deallocate_client_ip(it->first);
-            ip_to_client_map_.erase(it->second.allocated_ip);
-            logger_("client disconnected: " + it->first);
-            active_clients_.erase(it);
-            break;
-        }
+    std::lock_guard<std::mutex> lock(clients_mutex_);
+    auto it = active_clients_.find(client_id);
+    if (it != active_clients_.end()) {
+        it->second.update_activity();
+        
+        const auto& payload = tunnel_packet.get_payload();
+        write(server_tun_->get_fd(), payload.data(), payload.size());
+    }
+}
+
+void UDPTunnelServer::handle_keepalive_packet(const protocol::TunnelPacket& tunnel_packet, const sockaddr_in6& client_addr) {
+    char ip_str[INET6_ADDRSTRLEN];
+    inet_ntop(AF_INET6, &client_addr.sin6_addr, ip_str, sizeof(ip_str));
+    std::string client_id = std::string(ip_str) + ":" + std::to_string(ntohs(client_addr.sin6_port));
+    
+    std::lock_guard<std::mutex> lock(clients_mutex_);
+    auto it = active_clients_.find(client_id);
+    if (it != active_clients_.end()) {
+        it->second.update_activity();
+    }
+}
+
+void UDPTunnelServer::handle_disconnect_packet(const protocol::TunnelPacket& tunnel_packet, const sockaddr_in6& client_addr) {
+    char ip_str[INET6_ADDRSTRLEN];
+    inet_ntop(AF_INET6, &client_addr.sin6_addr, ip_str, sizeof(ip_str));
+    std::string client_id = std::string(ip_str) + ":" + std::to_string(ntohs(client_addr.sin6_port));
+    
+    std::lock_guard<std::mutex> lock(clients_mutex_);
+    auto it = active_clients_.find(client_id);
+    if (it != active_clients_.end()) {
+        ip_to_client_map_.erase(it->second.allocated_ip);
+        deallocate_client_ip(client_id);
+        active_clients_.erase(it);
+        logger_("client disconnected: " + client_id);
     }
 }
 
 void UDPTunnelServer::relay_tun_to_clients(const std::vector<uint8_t>& ip_packet) {
-    std::string destination_ip = extract_destination_ip(ip_packet);
-    if (destination_ip.empty()) {
-        return;
-    }
+    std::string dest_ip = extract_destination_ip(ip_packet);
+    std::string client_id = find_client_by_ip(dest_ip);
     
-    std::string client_id = find_client_by_ip(destination_ip);
     if (!client_id.empty()) {
         relay_to_client(client_id, ip_packet);
+    } else {
+        broadcast_to_all_clients(ip_packet);
     }
 }
 
 void UDPTunnelServer::relay_to_client(const std::string& client_id, const std::vector<uint8_t>& ip_packet) {
     std::lock_guard<std::mutex> lock(clients_mutex_);
     auto it = active_clients_.find(client_id);
-    
     if (it != active_clients_.end()) {
-        std::vector<uint8_t> data_packet = {0x03, 0x00};
-        data_packet.insert(data_packet.end(), ip_packet.begin(), ip_packet.end());
-        send_udp_packet(it->second.client_address, data_packet);
-        it->second.update_activity();
+        auto packet = protocol::TunnelPacket::create_data_packet(it->second.session_id, ip_packet);
+        if (packet) {
+            auto serialized = packet->serialize();
+            send_udp_packet(it->second.client_address, serialized);
+        }
     }
 }
 
 void UDPTunnelServer::broadcast_to_all_clients(const std::vector<uint8_t>& ip_packet) {
     std::lock_guard<std::mutex> lock(clients_mutex_);
-    
-    for (auto& [client_id, client] : active_clients_) {
-        std::vector<uint8_t> data_packet = {0x03, 0x00};
-        data_packet.insert(data_packet.end(), ip_packet.begin(), ip_packet.end());
-        send_udp_packet(client.client_address, data_packet);
-        client.update_activity();
+    for (const auto& [id, session] : active_clients_) {
+        relay_to_client(id, ip_packet);
     }
 }
 
 bool UDPTunnelServer::authenticate_client(const std::string& client_id, const std::string& auth_data) {
-    return !client_id.empty() && !auth_data.empty();
+    return true;
 }
 
 bool UDPTunnelServer::allocate_client_ip(const std::string& client_id, std::string& allocated_ip) {
-    auto ip_opt = ip_pool_->allocate_ip(client_id);
-    if (ip_opt.has_value()) {
-        allocated_ip = ip_opt.value();
+    auto result = ip_pool_->allocate_ip(client_id);
+    if (result.has_value()) {
+        allocated_ip = result.value();
         return true;
     }
     return false;
@@ -343,20 +318,16 @@ void UDPTunnelServer::deallocate_client_ip(const std::string& client_id) {
 }
 
 std::string UDPTunnelServer::generate_session_id() {
-    static std::random_device rd;
-    static std::mt19937 gen(rd());
-    static std::uniform_int_distribution<uint32_t> dis(1, 0xFFFFFFFF);
-    
-    return std::to_string(dis(gen));
+    static uint32_t counter = 1;
+    return std::to_string(counter++);
 }
 
 std::string UDPTunnelServer::extract_destination_ip(const std::vector<uint8_t>& ip_packet) {
-    if (ip_packet.size() < 20) {
-        return "";
-    }
+    if (ip_packet.size() < 20) return "";
     
-    uint32_t dest_ip = *reinterpret_cast<const uint32_t*>(ip_packet.data() + 16);
-    return inet_ntoa(in_addr{dest_ip});
+    char dest_ip[INET_ADDRSTRLEN];
+    inet_ntop(AF_INET, &ip_packet[16], dest_ip, sizeof(dest_ip));
+    return std::string(dest_ip);
 }
 
 std::string UDPTunnelServer::find_client_by_ip(const std::string& destination_ip) {
@@ -366,36 +337,26 @@ std::string UDPTunnelServer::find_client_by_ip(const std::string& destination_ip
 }
 
 void UDPTunnelServer::send_auth_response(const sockaddr_in6& client_addr, bool success, const std::string& allocated_ip) {
-    std::vector<uint8_t> response_packet;
-    response_packet.resize(64);
+    auto response = success ? 
+        protocol::TunnelPacket::create_auth_response(0, protocol::AuthResult::SUCCESS, allocated_ip) :
+        protocol::TunnelPacket::create_auth_response(0, protocol::AuthResult::IP_ALLOCATION_FAILED);
     
-    uint16_t packet_type = static_cast<uint16_t>(protocol::PacketType::AUTH_RESPONSE);
-    memcpy(response_packet.data(), &packet_type, 2);
-    
-    uint8_t result = success ? static_cast<uint8_t>(protocol::AuthResult::SUCCESS) : 
-                               static_cast<uint8_t>(protocol::AuthResult::INVALID_CREDENTIALS);
-    response_packet[8] = result;
-    
-    if (success && !allocated_ip.empty()) {
-        strncpy(reinterpret_cast<char*>(response_packet.data() + 16), allocated_ip.c_str(), 
-                std::min(allocated_ip.size(), size_t(32)));
+    if (response) {
+        auto serialized = response->serialize();
+        send_udp_packet(client_addr, serialized);
     }
-    
-    send_udp_packet(client_addr, response_packet);
 }
 
 void UDPTunnelServer::send_udp_packet(const sockaddr_in6& client_addr, const std::vector<uint8_t>& packet) {
-    ssize_t bytes_sent = sendto(udp_socket_, packet.data(), packet.size(), 0,
-                               reinterpret_cast<const sockaddr*>(&client_addr), sizeof(client_addr));
-    
-    if (bytes_sent < 0) {
-        logger_("failed to send packet to client");
-    }
+    sendto(udp_socket_, packet.data(), packet.size(), 0,
+           (sockaddr*)&client_addr, sizeof(client_addr));
 }
 
 void UDPTunnelServer::setup_server_tun() {
+    server_tun_ = std::make_unique<infrastructure::TunInterface>();
+    
     infrastructure::TunConfig config;
-    config.device_name = "cspvpn0";
+    config.device_name = "vpn_tun0";
     config.local_ip = "10.8.0.1";
     config.remote_ip = "10.8.0.2";
     config.netmask = "255.255.255.0";
@@ -403,43 +364,18 @@ void UDPTunnelServer::setup_server_tun() {
     config.persistent = false;
     
     if (!server_tun_->create_tun(config)) {
-        logger_("failed to create tun interface");
-        return;
+        throw std::runtime_error("failed to create tun interface");
     }
-    
     configure_server_routing();
-    enable_ip_forwarding();
 }
 
 void UDPTunnelServer::configure_server_routing() {
-    logger_("configuring server routing");
+    enable_ip_forwarding();
 }
 
 void UDPTunnelServer::enable_ip_forwarding() {
-    logger_("enabling ip forwarding");
+    system("echo 1 > /proc/sys/net/ipv4/ip_forward");
 }
 
-void UDPTunnelServer::cleanup_expired_sessions() {
-    while (running_.load()) {
-        auto now = std::chrono::steady_clock::now();
-        
-        {
-            std::lock_guard<std::mutex> lock(clients_mutex_);
-            
-            for (auto it = active_clients_.begin(); it != active_clients_.end();) {
-                if (it->second.is_expired(session_timeout_)) {
-                    deallocate_client_ip(it->first);
-                    ip_to_client_map_.erase(it->second.allocated_ip);
-                    logger_("session expired: " + it->first);
-                    it = active_clients_.erase(it);
-                } else {
-                    ++it;
-                }
-            }
-        }
-        
-        std::this_thread::sleep_for(std::chrono::seconds(30));
-    }
 }
-
 }

@@ -1,124 +1,163 @@
-#include "../../include/infrastructure/tunnel_packet.h"
-#include "../../include/infrastructure/crc32.h"
+#include "protocol/udp_tunnel_protocol.h"
+#include "infrastructure/crc32.h"
 #include <cstring>
-#include <stdexcept>
+#include <chrono>
 
-using namespace seeded_vpn::protocol;
+namespace seeded_vpn::protocol {
 
-TunnelPacket::TunnelPacket(PacketType type, uint32_t session_id, std::vector<uint8_t> payload)
-    : type_(type), session_id_(session_id), payload_(std::move(payload)) {
-    calculate_crc();
+TunnelPacket::TunnelPacket() {
+    initialize_header(PacketType::DATA, 0);
 }
 
-std::unique_ptr<TunnelPacket> TunnelPacket::parse(const uint8_t* data, size_t size) {
-    if (size < 13) {
+TunnelPacket::TunnelPacket(PacketType type, uint32_t session_id) {
+    initialize_header(type, session_id);
+}
+
+TunnelPacket::TunnelPacket(PacketType type, uint32_t session_id, const std::vector<uint8_t>& payload)
+    : payload_(payload) {
+    initialize_header(type, session_id);
+    header_.payload_size = static_cast<uint16_t>(payload_.size());
+    update_checksum();
+}
+
+void TunnelPacket::initialize_header(PacketType type, uint32_t session_id) {
+    header_.magic = TunnelPacketHeader::MAGIC;
+    header_.version = TunnelPacketHeader::VERSION;
+    header_.packet_type = type;
+    header_.session_id = session_id;
+    header_.payload_size = 0;
+    header_.sequence_number = 0;
+    header_.timestamp = std::chrono::duration_cast<std::chrono::milliseconds>(
+        std::chrono::system_clock::now().time_since_epoch()
+    ).count();
+    header_.checksum = 0;
+}
+
+std::unique_ptr<TunnelPacket> TunnelPacket::deserialize(const std::vector<uint8_t>& data) {
+    if (data.size() < TUNNEL_PACKET_HEADER_SIZE) {
         return nullptr;
     }
     
-    PacketType type = static_cast<PacketType>(data[0]);
-    uint32_t session_id = *reinterpret_cast<const uint32_t*>(data + 1);
-    uint32_t payload_size = *reinterpret_cast<const uint32_t*>(data + 5);
-    uint32_t received_crc = *reinterpret_cast<const uint32_t*>(data + 9);
+    TunnelPacketHeader header;
+    std::memcpy(&header, data.data(), TUNNEL_PACKET_HEADER_SIZE);
     
-    if (size < 13 + payload_size) {
+    if (header.magic != TunnelPacketHeader::MAGIC || 
+        header.version != TunnelPacketHeader::VERSION) {
         return nullptr;
     }
     
-    std::vector<uint8_t> payload(data + 13, data + 13 + payload_size);
-    auto packet = std::unique_ptr<TunnelPacket>(new TunnelPacket(type, session_id, std::move(payload)));
+    if (data.size() < TUNNEL_PACKET_HEADER_SIZE + header.payload_size) {
+        return nullptr;
+    }
     
-    if (!packet->verify_crc(data, size)) {
+    std::vector<uint8_t> payload;
+    if (header.payload_size > 0) {
+        payload.assign(
+            data.begin() + TUNNEL_PACKET_HEADER_SIZE,
+            data.begin() + TUNNEL_PACKET_HEADER_SIZE + header.payload_size
+        );
+    }
+    
+    auto packet = std::make_unique<TunnelPacket>(header.packet_type, header.session_id, payload);
+    packet->header_ = header;
+    
+    if (!packet->verify_checksum()) {
         return nullptr;
     }
     
     return packet;
 }
 
-std::unique_ptr<TunnelPacket> TunnelPacket::create_auth_request(const std::string& credentials) {
-    std::vector<uint8_t> payload(credentials.begin(), credentials.end());
-    return std::unique_ptr<TunnelPacket>(new TunnelPacket(PacketType::AUTH_REQUEST, 0, std::move(payload)));
-}
-
-std::unique_ptr<TunnelPacket> TunnelPacket::create_auth_response(AuthResult result, const std::string& allocated_ip) {
-    std::vector<uint8_t> payload;
-    payload.push_back(static_cast<uint8_t>(result));
-    payload.insert(payload.end(), allocated_ip.begin(), allocated_ip.end());
-    return std::unique_ptr<TunnelPacket>(new TunnelPacket(PacketType::AUTH_RESPONSE, 0, std::move(payload)));
-}
-
-std::unique_ptr<TunnelPacket> TunnelPacket::create_data_packet(uint32_t session_id, const std::vector<uint8_t>& payload) {
-    return std::unique_ptr<TunnelPacket>(new TunnelPacket(PacketType::DATA, session_id, payload));
-}
-
-std::unique_ptr<TunnelPacket> TunnelPacket::create_keepalive(uint32_t session_id) {
-    return std::unique_ptr<TunnelPacket>(new TunnelPacket(PacketType::KEEPALIVE, session_id, {}));
-}
-
-std::unique_ptr<TunnelPacket> TunnelPacket::create_disconnect(uint32_t session_id) {
-    return std::unique_ptr<TunnelPacket>(new TunnelPacket(PacketType::DISCONNECT, session_id, {}));
-}
-
-std::unique_ptr<TunnelPacket> TunnelPacket::create_error_response(const std::string& error_message) {
-    std::vector<uint8_t> payload(error_message.begin(), error_message.end());
-    return std::unique_ptr<TunnelPacket>(new TunnelPacket(PacketType::ERROR_RESPONSE, 0, std::move(payload)));
-}
-
-void TunnelPacket::get_data_payload(uint8_t* buffer) const {
-    if (!payload_.empty() && buffer) {
-        std::memcpy(buffer, payload_.data(), payload_.size());
-    }
-}
-
 std::vector<uint8_t> TunnelPacket::serialize() const {
     std::vector<uint8_t> data;
-    data.reserve(13 + payload_.size());
+    data.resize(TUNNEL_PACKET_HEADER_SIZE + payload_.size());
     
-    data.push_back(static_cast<uint8_t>(type_));
+    std::memcpy(data.data(), &header_, TUNNEL_PACKET_HEADER_SIZE);
     
-    auto session_bytes = reinterpret_cast<const uint8_t*>(&session_id_);
-    data.insert(data.end(), session_bytes, session_bytes + 4);
-    
-    uint32_t payload_size = static_cast<uint32_t>(payload_.size());
-    auto size_bytes = reinterpret_cast<const uint8_t*>(&payload_size);
-    data.insert(data.end(), size_bytes, size_bytes + 4);
-    
-    auto crc_bytes = reinterpret_cast<const uint8_t*>(&crc32_);
-    data.insert(data.end(), crc_bytes, crc_bytes + 4);
-    
-    data.insert(data.end(), payload_.begin(), payload_.end());
+    if (!payload_.empty()) {
+        std::memcpy(data.data() + TUNNEL_PACKET_HEADER_SIZE, payload_.data(), payload_.size());
+    }
     
     return data;
 }
 
-void TunnelPacket::calculate_crc() {
-    std::vector<uint8_t> data_for_crc;
-    data_for_crc.push_back(static_cast<uint8_t>(type_));
-    
-    auto session_bytes = reinterpret_cast<const uint8_t*>(&session_id_);
-    data_for_crc.insert(data_for_crc.end(), session_bytes, session_bytes + 4);
-    
-    uint32_t payload_size = static_cast<uint32_t>(payload_.size());
-    auto size_bytes = reinterpret_cast<const uint8_t*>(&payload_size);
-    data_for_crc.insert(data_for_crc.end(), size_bytes, size_bytes + 4);
-    
-    data_for_crc.insert(data_for_crc.end(), payload_.begin(), payload_.end());
-    
-    crc32_ = seeded_vpn::infrastructure::CRC32::calculate(data_for_crc.data(), data_for_crc.size());
+bool TunnelPacket::is_valid() const {
+    return header_.magic == TunnelPacketHeader::MAGIC &&
+           header_.version == TunnelPacketHeader::VERSION &&
+           header_.payload_size == payload_.size() &&
+           verify_checksum();
 }
 
-bool TunnelPacket::verify_crc(const uint8_t* data, size_t size) const {
-    if (size < 13) {
-        return false;
+void TunnelPacket::update_checksum() {
+    header_.checksum = 0;
+    header_.checksum = calculate_checksum();
+}
+
+bool TunnelPacket::verify_checksum() const {
+    uint32_t stored_checksum = header_.checksum;
+    const_cast<TunnelPacket*>(this)->header_.checksum = 0;
+    uint32_t calculated = calculate_checksum();
+    const_cast<TunnelPacket*>(this)->header_.checksum = stored_checksum;
+    return calculated == stored_checksum;
+}
+
+uint32_t TunnelPacket::calculate_checksum() const {
+    std::vector<uint8_t> data_for_checksum;
+    data_for_checksum.resize(TUNNEL_PACKET_HEADER_SIZE + payload_.size());
+    
+    std::memcpy(data_for_checksum.data(), &header_, TUNNEL_PACKET_HEADER_SIZE);
+    
+    if (!payload_.empty()) {
+        std::memcpy(data_for_checksum.data() + TUNNEL_PACKET_HEADER_SIZE, payload_.data(), payload_.size());
     }
     
-    uint32_t payload_size = *reinterpret_cast<const uint32_t*>(data + 5);
-    uint32_t received_crc = *reinterpret_cast<const uint32_t*>(data + 9);
+    return infrastructure::CRC32::calculate(data_for_checksum.data(), data_for_checksum.size());
+}
+
+void TunnelPacket::set_payload(const std::vector<uint8_t>& payload) {
+    payload_ = payload;
+    header_.payload_size = static_cast<uint16_t>(payload_.size());
+    update_checksum();
+}
+
+std::unique_ptr<TunnelPacket> TunnelPacket::create_auth_request(const std::string& client_id, const std::string& auth_token) {
+    AuthRequest req;
+    req.client_id = client_id;
+    req.auth_token = auth_token;
+    req.timestamp = std::chrono::duration_cast<std::chrono::milliseconds>(
+        std::chrono::system_clock::now().time_since_epoch()
+    ).count();
     
-    std::vector<uint8_t> data_for_crc;
-    data_for_crc.insert(data_for_crc.end(), data, data + 9);
-    data_for_crc.insert(data_for_crc.end(), data + 13, data + 13 + payload_size);
+    auto payload = req.serialize();
+    return std::make_unique<TunnelPacket>(PacketType::AUTH_REQUEST, 0, payload);
+}
+
+std::unique_ptr<TunnelPacket> TunnelPacket::create_auth_response(uint32_t session_id, AuthResult result, const std::string& allocated_ip) {
+    AuthResponse resp;
+    resp.result = result;
+    resp.allocated_ip = allocated_ip;
+    resp.server_config = "";
     
-    uint32_t calculated_crc = seeded_vpn::infrastructure::CRC32::calculate(data_for_crc.data(), data_for_crc.size());
-    
-    return calculated_crc == received_crc;
+    auto payload = resp.serialize();
+    return std::make_unique<TunnelPacket>(PacketType::AUTH_RESPONSE, session_id, payload);
+}
+
+std::unique_ptr<TunnelPacket> TunnelPacket::create_data_packet(uint32_t session_id, const std::vector<uint8_t>& ip_packet) {
+    return std::make_unique<TunnelPacket>(PacketType::DATA, session_id, ip_packet);
+}
+
+std::unique_ptr<TunnelPacket> TunnelPacket::create_keepalive(uint32_t session_id) {
+    return std::make_unique<TunnelPacket>(PacketType::KEEPALIVE, session_id);
+}
+
+std::unique_ptr<TunnelPacket> TunnelPacket::create_disconnect(uint32_t session_id, const std::string& reason) {
+    std::vector<uint8_t> payload(reason.begin(), reason.end());
+    return std::make_unique<TunnelPacket>(PacketType::DISCONNECT, session_id, payload);
+}
+
+std::unique_ptr<TunnelPacket> TunnelPacket::create_error_response(const std::string& error_message) {
+    std::vector<uint8_t> payload(error_message.begin(), error_message.end());
+    return std::make_unique<TunnelPacket>(PacketType::ERROR_RESPONSE, 0, payload);
+}
+
 }
