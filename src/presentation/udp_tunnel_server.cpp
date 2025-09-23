@@ -277,6 +277,8 @@ void seeded_vpn::presentation::UDPTunnelServer::handle_keepalive_packet(const pr
 }
 
 void seeded_vpn::presentation::UDPTunnelServer::handle_disconnect_packet(const protocol::TunnelPacket& tunnel_packet, const sockaddr_in6& client_addr) {
+    (void)tunnel_packet; // Packet validation would be done in real implementation
+    
     char ip_str[INET6_ADDRSTRLEN];
     inet_ntop(AF_INET6, &client_addr.sin6_addr, ip_str, sizeof(ip_str));
     std::string client_key = std::string(ip_str) + ":" + std::to_string(ntohs(client_addr.sin6_port));
