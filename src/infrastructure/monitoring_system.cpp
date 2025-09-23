@@ -732,7 +732,10 @@ void Logger::critical(const std::string& component, const std::string& message, 
 }
 
 void Logger::log_connection_event(const std::string& client_id, const std::string& event, const std::unordered_map<std::string, std::string>& details) {
-    log(LogLevel::INFO, "connection", event, details);
+    std::unordered_map<std::string, std::string> enriched_details = details;
+    enriched_details["client_id"] = client_id;
+    enriched_details["timestamp"] = std::to_string(std::chrono::system_clock::now().time_since_epoch().count());
+    log(LogLevel::INFO, "connection", event, enriched_details);
 }
 void Logger::log_security_event(const std::string& event_type, const std::string& details, const std::unordered_map<std::string, std::string>& metadata) {
     log(LogLevel::WARNING, event_type, details, metadata);

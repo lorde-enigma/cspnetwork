@@ -80,13 +80,13 @@ private:
     int epoll_fd_;
     std::unique_ptr<ConnectionPool> connection_pool_;
     std::vector<std::thread> worker_threads_;
-    std::atomic<bool> running_;
     
     SocketEventCallback event_callback_;
     
     std::vector<int> listening_sockets_;
     uint16_t base_port_;
     size_t num_listeners_;
+    std::atomic<bool> running_;
 
     void worker_thread_loop();
     void handle_epoll_event(const epoll_event& event);

@@ -7,9 +7,9 @@
 
 std::unique_ptr<seeded_vpn::presentation::UDPTunnelServer> server;
 
-void signal_handler(int signal) {
+void signal_handler(int sig) {
+    std::cout << "\nreceived signal " << sig << ", shutting down server..." << std::endl;
     if (server) {
-        std::cout << "\nshutting down server..." << std::endl;
         server->stop();
     }
     exit(0);

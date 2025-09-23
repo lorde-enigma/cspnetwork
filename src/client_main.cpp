@@ -7,8 +7,8 @@
 std::unique_ptr<seeded_vpn::application::VPNClient> client;
 bool running = true;
 
-void signal_handler(int signal) {
-    std::cout << "\ndisconnecting..." << std::endl;
+void signal_handler(int sig) {
+    std::cout << "\nreceived signal " << sig << ", disconnecting..." << std::endl;
     running = false;
     if (client) {
         client->disconnect();

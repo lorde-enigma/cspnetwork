@@ -51,12 +51,12 @@ enum class LogLevel : uint8_t {
 };
 
 struct ConnectionContext {
-    ConnectionId connection_id;
-    ClientId client_id;
-    IPv6Address assigned_address;
-    ConnectionState state;
-    std::chrono::steady_clock::time_point created_at;
-    std::chrono::steady_clock::time_point last_activity;
+    ConnectionId connection_id{};
+    ClientId client_id{};
+    IPv6Address assigned_address{};
+    ConnectionState state{ConnectionState::DISCONNECTED};
+    std::chrono::steady_clock::time_point created_at{};
+    std::chrono::steady_clock::time_point last_activity{};
 };
 
 struct SeedContext {

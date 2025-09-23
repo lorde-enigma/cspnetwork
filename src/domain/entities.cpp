@@ -78,6 +78,31 @@ void VPNConnection::validate_state_transition(ConnectionState from, ConnectionSt
                 throw std::logic_error("invalid state transition from suspended");
             }
             break;
+        case ConnectionState::AUTHENTICATING:
+            if (to != ConnectionState::CONNECTING && to != ConnectionState::FAILED) {
+                throw std::logic_error("invalid state transition from authenticating");
+            }
+            break;
+        case ConnectionState::CONNECTED:
+            if (to != ConnectionState::DISCONNECTING && to != ConnectionState::ERROR) {
+                throw std::logic_error("invalid state transition from connected");
+            }
+            break;
+        case ConnectionState::DISCONNECTING:
+            if (to != ConnectionState::DISCONNECTED) {
+                throw std::logic_error("invalid state transition from disconnecting");
+            }
+            break;
+        case ConnectionState::DISCONNECTED:
+            if (to != ConnectionState::CONNECTING) {
+                throw std::logic_error("invalid state transition from disconnected");
+            }
+            break;
+        case ConnectionState::ERROR:
+            if (to != ConnectionState::CONNECTING && to != ConnectionState::TERMINATED) {
+                throw std::logic_error("invalid state transition from error");
+            }
+            break;
         case ConnectionState::FAILED:
         case ConnectionState::TERMINATED:
             throw std::logic_error("cannot transition from terminal state");

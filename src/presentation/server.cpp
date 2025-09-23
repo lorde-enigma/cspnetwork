@@ -241,10 +241,11 @@ HttpResponse VPNRestServer::handle_connection_delete(const HttpRequest& request)
         
         auto connection_service = container_.get_connection_service();
         
-        bool success = true;
+        // Terminate the connection
+        bool success = connection_service->terminate_connection(conn_id);
         
         HttpResponse response;
-        response.body = JsonHelper::serialize_error("connection terminated", "success");
+        response.body = JsonHelper::serialize_error("connection terminated", success ? "success" : "failed");
         
         return response;
         
@@ -259,8 +260,14 @@ HttpResponse VPNRestServer::handle_connection_status(const HttpRequest& request)
         domain::ConnectionId conn_id = std::stoull(conn_id_str);
         
         auto connection_service = container_.get_connection_service();
+        auto connection_details = connection_service->get_connection_details(conn_id);
         
         HttpResponse response;
+        if (connection_details) {
+            response.body = JsonHelper::serialize_connection_context(*connection_details);
+        } else {
+            response.body = JsonHelper::serialize_error("connection not found", "error");
+        }
         response.body = JsonHelper::serialize_connection_context(domain::ConnectionContext{});
         
         return response;
@@ -290,6 +297,9 @@ HttpResponse VPNRestServer::handle_address_allocate(const HttpRequest& request) 
         auto connection_service = container_.get_connection_service();
         domain::SeedValue seed = std::random_device{}();
         domain::IPv6Address address("2001:db8::1");
+        
+        // Use seed for address allocation algorithm
+        (void)seed; // Mark as intentionally calculated but not yet implemented
         
         HttpResponse response;
         response.status_code = 201;

@@ -166,6 +166,7 @@ public:
 private:
     LRUCache<std::string, RouteInfo> cache_;
     mutable std::shared_mutex mutex_;
+    std::unordered_map<std::string, bool> health_status_;
 };
 
 class DNSCache {

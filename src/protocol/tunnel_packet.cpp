@@ -2,6 +2,7 @@
 #include "infrastructure/crc32.h"
 #include <cstring>
 #include <chrono>
+#include <memory>
 
 namespace seeded_vpn::protocol {
 

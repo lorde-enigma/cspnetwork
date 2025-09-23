@@ -4,6 +4,7 @@
 #include <vector>
 #include <string>
 #include <chrono>
+#include <memory>
 
 namespace seeded_vpn::protocol {
 

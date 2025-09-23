@@ -36,9 +36,9 @@ private:
 class FileSystemLogger : public domain::ILogger {
 private:
     std::ofstream log_file_;
-    domain::LogLevel current_level_;
     mutable std::mutex log_mutex_;
     std::string log_file_path_;
+    domain::LogLevel current_level_;
     bool console_output_enabled_;
 
 public:

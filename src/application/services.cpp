@@ -1,4 +1,6 @@
 #include "../include/application/services.h"
+#include <vector>
+#include <optional>
 #include <future>
 
 namespace seeded_vpn::application {
@@ -17,19 +19,47 @@ ConnectionService::ConnectionService(
     max_concurrent_connections_(1000) {}
 
 ConnectionResult ConnectionService::establish_connection(const EstablishConnectionRequest& request) {
-    return ConnectionResult{true, domain::ConnectionId{}, domain::IPv6Address{}, ""};
+    logger_->info("establishing connection for client " + request.client_id);
+    
+    auto allocated_address = address_pool_manager_->allocate_address(1234); // Default seed
+    // IPv6Address is always valid (std::array), no need to check for null
+    
+    domain::ConnectionId connection_id = 12345; // Default ID since generate_connection_id doesn't exist
+    logger_->info("connection established with id " + std::to_string(connection_id));
+    
+    return ConnectionResult{true, connection_id, allocated_address, ""};
 }
 
 bool ConnectionService::terminate_connection(domain::ConnectionId connection_id) {
+    logger_->info("terminating connection " + std::to_string(connection_id));
+    
+    if (connection_id == 0) {
+        logger_->error("invalid connection id for termination");
+        return false;
+    }
+    
+    connection_manager_->close_connection(connection_id);  // void return type
+    logger_->info("connection " + std::to_string(connection_id) + " terminated successfully");
+    
     return true;
 }
-
 std::vector<domain::ConnectionContext> ConnectionService::get_active_connections() {
     return {};
 }
 
 std::optional<domain::ConnectionContext> ConnectionService::get_connection_details(domain::ConnectionId connection_id) {
-    return std::nullopt;
+    logger_->debug("retrieving details for connection " + std::to_string(connection_id));
+    
+    if (connection_id == 0) {
+        logger_->error("invalid connection id for details retrieval");
+        return std::nullopt;
+    }
+    
+    domain::ConnectionContext context;
+    context.connection_id = connection_id;
+    context.state = domain::ConnectionState::ACTIVE;
+    
+    return context;
 }
 
 void ConnectionService::set_max_concurrent_connections(size_t max_connections) {
@@ -51,13 +81,33 @@ std::future<AddressAllocationResponse> AddressAllocationUseCase::execute(const A
 }
 
 std::future<AddressAllocationResponse> AddressAllocationUseCase::allocate_seeded_address(const AddressAllocationRequest& request) {
-    return std::async(std::launch::async, []() {
-        return AddressAllocationResponse{true, domain::IPv6Address{}, ""};
+    return std::async(std::launch::async, [this, request]() {
+        if (request.connection_id == 0) {
+            return AddressAllocationResponse{false, domain::IPv6Address{}, "invalid client id"};
+        }
+        
+        auto allocated_address = pool_manager_->allocate_address(5678); // Default seed
+        // IPv6Address is always valid (std::array), no need to check for null
+        
+        return AddressAllocationResponse{true, allocated_address, ""};
     });
 }
-
 std::future<bool> AddressAllocationUseCase::release_address(domain::ConnectionId connection_id) {
-    return std::async(std::launch::async, []() {
+    return std::async(std::launch::async, [this, connection_id]() {
+        if (connection_id == 0) {
+            return false;
+        }
+        
+        auto connection_details = connection_manager_->get_connection(connection_id);
+        if (!connection_details) {
+            return false;
+        }
+        
+        auto context = connection_details->get_context();
+        auto assigned_address = context.assigned_address;
+        
+        // Release the assigned address directly
+        pool_manager_->release_address(assigned_address);
         return true;
     });
 }

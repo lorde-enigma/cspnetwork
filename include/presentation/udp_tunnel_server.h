@@ -81,10 +81,9 @@ private:
     void enable_ip_forwarding();
     
     uint16_t port_;
-    int udp_socket_;
-    std::atomic<bool> running_;
-    
     std::shared_ptr<domain::VPNConfig> config_;
+    std::atomic<bool> running_;
+    int udp_socket_;
     std::unique_ptr<infrastructure::TunInterface> server_tun_;
     std::unique_ptr<infrastructure::IPPool> ip_pool_;
     
