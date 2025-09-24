@@ -1,0 +1,3 @@
+remote localhost 8080
+client-id cliente_local-20250924-080500
+protocol udp

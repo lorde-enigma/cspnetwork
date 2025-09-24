@@ -126,23 +126,15 @@ public:
         }
         
         struct timeval timeout;
-        timeout.tv_sec = 3;
+        timeout.tv_sec = 2;
         timeout.tv_usec = 0;
         setsockopt(sock, SOL_SOCKET, SO_RCVTIMEO, &timeout, sizeof(timeout));
         
-        const char test_msg[] = "ping";
+        const char test_msg[] = "CONNECT";
         ssize_t sent = sendto(sock, test_msg, strlen(test_msg), 0, addr_ptr, addr_len);
         
-        if (sent <= 0) {
-            close(sock);
-            return false;
-        }
-        
-        char buffer[64];
-        ssize_t received = recvfrom(sock, buffer, sizeof(buffer), 0, nullptr, nullptr);
         close(sock);
-        
-        return received > 0;
+        return sent > 0;
     }
 
 private:

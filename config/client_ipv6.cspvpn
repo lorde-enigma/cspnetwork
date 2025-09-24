@@ -1,0 +1,23 @@
+# csp network vpn client configuration
+# similar to openvpn format
+
+# server connection
+remote fd00::1 8080
+
+# client identification
+client-id my-laptop
+auth-token secret-auth-token-12345
+client-seed 1234567890
+exit-ip 10.8.0.123
+
+# connection settings
+protocol tcp
+keepalive 30
+connect-timeout 10
+auto-reconnect true
+
+# logging
+log-level info
+
+# seed-based routing (managed automatically)
+# each client gets unique exit IP based on seed
