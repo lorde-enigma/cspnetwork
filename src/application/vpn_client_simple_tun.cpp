@@ -6,6 +6,12 @@
 #include <thread>
 #include <chrono>
 #include <yaml-cpp/yaml.h>
+#include <sys/socket.h>
+#include <netinet/in.h>
+#include <arpa/inet.h>
+#include <unistd.h>
+#include <netdb.h>
+#include <cstring>
 
 namespace seeded_vpn::application {
 
@@ -33,7 +39,13 @@ public:
             }
             
             parent_->update_status(ConnectionStatus::CONNECTING, "authenticating");
-            std::this_thread::sleep_for(std::chrono::milliseconds(500));
+            
+            if (!test_server_connection(config.server_host, config.server_port)) {
+                parent_->update_status(ConnectionStatus::DISCONNECTED, "failed to connect to server");
+                tun_interface_->destroy_tun();
+                promise->set_value(false);
+                return;
+            }
             
             tun_interface_->set_packet_callback([this](const std::vector<uint8_t>& packet) {
                 handle_tun_packet(packet);
@@ -84,6 +96,53 @@ public:
         if (connected_) {
             std::cout << "received packet: " << packet.size() << " bytes" << std::endl;
         }
+    }
+    
+    bool test_server_connection(const std::string& host, int port) {
+        int sock = socket(AF_INET6, SOCK_DGRAM, 0);
+        if (sock < 0) {
+            sock = socket(AF_INET, SOCK_DGRAM, 0);
+            if (sock < 0) return false;
+        }
+        
+        struct sockaddr_in6 addr6;
+        struct sockaddr_in addr4;
+        struct sockaddr* addr_ptr = nullptr;
+        socklen_t addr_len = 0;
+        
+        if (inet_pton(AF_INET6, host.c_str(), &addr6.sin6_addr) == 1) {
+            addr6.sin6_family = AF_INET6;
+            addr6.sin6_port = htons(port);
+            addr_ptr = reinterpret_cast<struct sockaddr*>(&addr6);
+            addr_len = sizeof(addr6);
+        } else if (inet_pton(AF_INET, host.c_str(), &addr4.sin_addr) == 1) {
+            addr4.sin_family = AF_INET;
+            addr4.sin_port = htons(port);
+            addr_ptr = reinterpret_cast<struct sockaddr*>(&addr4);
+            addr_len = sizeof(addr4);
+        } else {
+            close(sock);
+            return false;
+        }
+        
+        struct timeval timeout;
+        timeout.tv_sec = 3;
+        timeout.tv_usec = 0;
+        setsockopt(sock, SOL_SOCKET, SO_RCVTIMEO, &timeout, sizeof(timeout));
+        
+        const char test_msg[] = "ping";
+        ssize_t sent = sendto(sock, test_msg, strlen(test_msg), 0, addr_ptr, addr_len);
+        
+        if (sent <= 0) {
+            close(sock);
+            return false;
+        }
+        
+        char buffer[64];
+        ssize_t received = recvfrom(sock, buffer, sizeof(buffer), 0, nullptr, nullptr);
+        close(sock);
+        
+        return received > 0;
     }
 
 private:

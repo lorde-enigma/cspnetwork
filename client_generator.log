@@ -58,3 +58,9 @@
 [2025-09-21T05:25:31.265Z] [info] generating client configuration for: enigmaweb
 [2025-09-21T05:25:31.265Z] [info] using requested seed: 4516414090228029725
 [2025-09-21T05:25:31.266Z] [info] client generated - id: enigmaweb-20250921-052531-6408, exit_ip: 2a0e:b107:1ef0:e73c:88c2:2ac4:2596:cf9c
+[2025-09-23T19:52:09.170Z] [info] generating client configuration for: cliente_teste
+[2025-09-23T19:52:09.170Z] [info] generated seed: 3650162512091879035
+[2025-09-23T19:52:09.172Z] [info] client generated - id: cliente_teste-20250923-195209-4811, exit_ip: 2a0e:b107:1ef0:c248:7eda:8975:11f9:a031
+[2025-09-24T07:50:14.787Z] [info] generating client configuration for: cliente_ipv6
+[2025-09-24T07:50:14.787Z] [info] generated seed: 12461934230599580895
+[2025-09-24T07:50:14.788Z] [info] client generated - id: cliente_ipv6-20250924-075014-6766, exit_ip: 2a0e:b107:1ef0:abf6:75eb:932e:352b:3f4e
