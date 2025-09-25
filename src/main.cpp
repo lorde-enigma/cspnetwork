@@ -3,7 +3,7 @@
 #include <thread>
 #include <chrono>
 #include "../include/presentation/udp_tunnel_server.h"
-#include "../include/domain/vpn_config.h"
+#include "../include/domain/cspnetwork_config.h"
 
 std::unique_ptr<seeded_vpn::presentation::UDPTunnelServer> server;
 

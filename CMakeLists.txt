@@ -32,13 +32,13 @@ set(CLIENT_SOURCES
     ${DOMAIN_SOURCES}
     ${INFRASTRUCTURE_SOURCES}
     src/application/services.cpp
-    src/application/vpn_client.cpp
+    src/application/cspnetwork_client.cpp
 )
 
 add_executable(cspnetwork
     src/main.cpp
     src/application/services.cpp
-    src/application/vpn_client.cpp
+    src/application/cspnetwork_client.cpp
     src/infrastructure/config_manager.cpp
     src/infrastructure/error_handler.cpp
     src/infrastructure/tun_interface.cpp
@@ -50,7 +50,7 @@ add_executable(cspnetwork
     src/infrastructure/security.cpp
     src/infrastructure/seeded_router.cpp
     src/infrastructure/thread_management.cpp
-    src/infrastructure/vpn_protocol.cpp
+    src/infrastructure/cspnetwork_protocol.cpp
     src/infrastructure/ipv6_address_manager.cpp
     src/infrastructure/ip_pool.cpp
     src/infrastructure/crc32.cpp
@@ -63,12 +63,12 @@ add_executable(cspnetwork
     src/protocol/tunnel_packet.cpp
     src/domain/entities.cpp
     src/domain/connection_context.cpp
-    src/domain/vpn_config.cpp
+    src/domain/cspnetwork_config.cpp
 )
 
 add_executable(cspvpn-client
     src/client_main.cpp
-    src/application/vpn_client_simple_tun.cpp
+    src/application/cspnetwork_client.cpp
     src/infrastructure/tun_interface.cpp
     src/domain/entities.cpp
 )
@@ -111,9 +111,9 @@ target_link_libraries(cspnetwork-tests
     dl
 )
 
-# UDP Tunnel Test Client
+# Client Test Executable
 add_executable(cspvpn-client-test 
-    test_client.cpp
+    mindvoices/client_test.cpp
     src/protocol/udp_tunnel_protocol.cpp
     src/protocol/tunnel_packet.cpp
     src/infrastructure/crc32.cpp
@@ -127,22 +127,7 @@ target_link_libraries(cspvpn-client-test
     dl
 )
 
-# Full VPN Client
-add_executable(cspvpn-client-full
-    vpn_client_full.cpp
-    src/protocol/udp_tunnel_protocol.cpp
-    src/protocol/tunnel_packet.cpp
-    src/infrastructure/crc32.cpp
-    src/infrastructure/tun_interface.cpp
-)
-target_include_directories(cspvpn-client-full PRIVATE include)
-target_link_libraries(cspvpn-client-full
-    Threads::Threads
-    ${YAMLCPP_LIBRARIES}
-    OpenSSL::SSL
-    OpenSSL::Crypto
-    dl
-)
+# CSP Network Client Core - removed (no main function needed)
 
 target_link_libraries(cspnetwork
     Threads::Threads

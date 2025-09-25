@@ -1,7 +1,7 @@
 #include "presentation/udp_tunnel_server.h"
 #include "infrastructure/tun_interface.h"
 #include "protocol/udp_tunnel_protocol.h"
-#include "domain/vpn_config.h"
+#include "domain/cspnetwork_config.h"
 #include "infrastructure/ip_pool.h"
 #include "domain/connection_context.h"
 #include "infrastructure/logger.h"

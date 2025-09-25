@@ -13,7 +13,7 @@
 #include "../protocol/udp_tunnel_protocol.h"
 #include "../infrastructure/ip_pool.h"
 #include "../domain/connection_context.h"
-#include "../domain/vpn_config.h"
+#include "../domain/cspnetwork_config.h"
 
 namespace seeded_vpn::presentation {
 

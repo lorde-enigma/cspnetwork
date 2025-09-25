@@ -1,4 +1,4 @@
-#include "infrastructure/vpn_protocol.h"
+#include "infrastructure/cspnetwork_protocol.h"
 #include <algorithm>
 #include <chrono>
 #include <openssl/sha.h>

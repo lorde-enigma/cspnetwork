@@ -2,9 +2,9 @@
 #include <csignal>
 #include <thread>
 #include <chrono>
-#include "../include/application/vpn_client.h"
+#include "../include/application/cspnetwork_client.h"
 
-std::unique_ptr<seeded_vpn::application::VPNClient> client;
+std::unique_ptr<cspnetwork::application::CSPNetworkClient> client;
 bool running = true;
 
 void signal_handler(int sig) {
@@ -49,13 +49,13 @@ void show_version() {
     std::cout << "c++20 implementation\n";
 }
 
-std::string status_to_string(seeded_vpn::application::ConnectionStatus status) {
+std::string status_to_string(cspnetwork::application::ConnectionStatus status) {
     switch (status) {
-        case seeded_vpn::application::ConnectionStatus::DISCONNECTED: return "disconnected";
-        case seeded_vpn::application::ConnectionStatus::CONNECTING: return "connecting";
-        case seeded_vpn::application::ConnectionStatus::CONNECTED: return "connected";
-        case seeded_vpn::application::ConnectionStatus::RECONNECTING: return "reconnecting";
-        case seeded_vpn::application::ConnectionStatus::ERROR: return "error";
+        case cspnetwork::application::ConnectionStatus::DISCONNECTED: return "disconnected";
+        case cspnetwork::application::ConnectionStatus::CONNECTING: return "connecting";
+        case cspnetwork::application::ConnectionStatus::CONNECTED: return "connected";
+        case cspnetwork::application::ConnectionStatus::RECONNECTING: return "reconnecting";
+        case cspnetwork::application::ConnectionStatus::ERROR: return "error";
         default: return "unknown";
     }
 }
@@ -97,9 +97,9 @@ int main(int argc, char* argv[]) {
     }
 
     try {
-        client = std::make_unique<seeded_vpn::application::VPNClient>();
+        client = std::make_unique<cspnetwork::application::CSPNetworkClient>();
 
-        client->set_status_callback([](seeded_vpn::application::ConnectionStatus status, const std::string& message) {
+        client->set_status_callback([](cspnetwork::application::ConnectionStatus status, const std::string& message) {
             std::cout << "[" << status_to_string(status) << "] " << message << std::endl;
         });
 

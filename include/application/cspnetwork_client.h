@@ -6,7 +6,7 @@
 #include <functional>
 #include "../domain/types.h"
 
-namespace seeded_vpn::application {
+namespace cspnetwork::application {
 
 struct ClientConfig {
     std::string server_host;
@@ -28,13 +28,13 @@ enum class ConnectionStatus {
     ERROR
 };
 
-class VPNClient {
+class CSPNetworkClient {
 public:
     using StatusCallback = std::function<void(ConnectionStatus, const std::string&)>;
     using DataCallback = std::function<void(const std::vector<uint8_t>&)>;
 
-    VPNClient();
-    ~VPNClient();
+    CSPNetworkClient();
+    ~CSPNetworkClient();
 
     bool load_config(const std::string& config_file);
     std::future<bool> connect();
@@ -49,7 +49,7 @@ public:
     std::string get_last_error() const;
 
 private:
-    std::unique_ptr<class VPNClientImpl> impl_;
+    std::unique_ptr<class CSPNetworkClientImpl> impl_;
     ClientConfig config_;
     ConnectionStatus status_;
     std::string last_error_;
@@ -61,7 +61,7 @@ private:
     bool parse_yaml_config(const std::string& config_file);
     void update_status(ConnectionStatus status, const std::string& message = "");
     
-    friend class VPNClientImpl;
+    friend class CSPNetworkClientImpl;
 };
 
 }

@@ -11,7 +11,7 @@
 #include <netinet/in.h>
 #include "domain/types.h"
 #include "infrastructure/security.h"
-#include "infrastructure/vpn_protocol.h"
+#include "infrastructure/cspnetwork_protocol.h"
 
 namespace CipherProxy::Infrastructure {
 

@@ -1,8 +1,9 @@
-#include "../include/application/vpn_client.h"
+#include "../include/application/cspnetwork_client.h"
 #include "../include/infrastructure/tun_interface.h"
+
+using namespace seeded_vpn;
 #include <iostream>
 #include <fstream>
-#include <regex>
 #include <thread>
 #include <chrono>
 #include <yaml-cpp/yaml.h>
@@ -10,14 +11,13 @@
 #include <netinet/in.h>
 #include <arpa/inet.h>
 #include <unistd.h>
-#include <netdb.h>
 #include <cstring>
 
-namespace seeded_vpn::application {
+namespace cspnetwork::application {
 
-class VPNClientImpl {
+class CSPNetworkClientImpl {
 public:
-    VPNClientImpl(VPNClient* parent) : parent_(parent), connected_(false), tun_interface_(std::make_unique<infrastructure::TunInterface>()) {}
+    CSPNetworkClientImpl(CSPNetworkClient* parent) : parent_(parent), connected_(false), tun_interface_(std::make_unique<seeded_vpn::infrastructure::TunInterface>()) {}
     
     std::future<bool> connect(const ClientConfig& config) {
         auto promise = std::make_shared<std::promise<bool>>();
@@ -26,21 +26,21 @@ public:
         std::thread([this, config, promise]() {
             parent_->update_status(ConnectionStatus::CONNECTING, "connecting to " + config.server_host);
             
-            infrastructure::TunConfig tun_config;
-            tun_config.device_name = "cspvpn0";
+            seeded_vpn::infrastructure::TunConfig tun_config;
+            tun_config.device_name = "cspnet0";
             tun_config.local_ip = "10.8.0.2";
             tun_config.netmask = "24";
             tun_config.mtu = 1500;
             
             if (!tun_interface_->create_tun(tun_config)) {
-                parent_->update_status(ConnectionStatus::DISCONNECTED, "failed to create tun interface");
+                parent_->update_status(ConnectionStatus::DISCONNECTED, "failed to create tunnel interface");
                 promise->set_value(false);
                 return;
             }
             
             parent_->update_status(ConnectionStatus::CONNECTING, "authenticating");
             
-            if (!test_server_connection(config.server_host, config.server_port)) {
+            if (!test_connection(config.server_host, config.server_port)) {
                 parent_->update_status(ConnectionStatus::DISCONNECTED, "failed to connect to server");
                 tun_interface_->destroy_tun();
                 promise->set_value(false);
@@ -48,7 +48,7 @@ public:
             }
             
             tun_interface_->set_packet_callback([this](const std::vector<uint8_t>& packet) {
-                handle_tun_packet(packet);
+                handle_packet(packet);
             });
             
             tun_interface_->start_packet_loop();
@@ -92,13 +92,13 @@ public:
         return future;
     }
     
-    void handle_tun_packet(const std::vector<uint8_t>& packet) {
+    void handle_packet(const std::vector<uint8_t>& packet) {
         if (connected_) {
             std::cout << "received packet: " << packet.size() << " bytes" << std::endl;
         }
     }
     
-    bool test_server_connection(const std::string& host, int port) {
+    bool test_connection(const std::string& host, int port) {
         int sock = socket(AF_INET6, SOCK_DGRAM, 0);
         if (sock < 0) {
             sock = socket(AF_INET, SOCK_DGRAM, 0);
@@ -126,11 +126,11 @@ public:
         }
         
         struct timeval timeout;
-        timeout.tv_sec = 2;
+        timeout.tv_sec = 3;
         timeout.tv_usec = 0;
         setsockopt(sock, SOL_SOCKET, SO_RCVTIMEO, &timeout, sizeof(timeout));
         
-        const char test_msg[] = "CONNECT";
+        const char test_msg[] = "ping";
         ssize_t sent = sendto(sock, test_msg, strlen(test_msg), 0, addr_ptr, addr_len);
         
         close(sock);
@@ -138,56 +138,57 @@ public:
     }
 
 private:
-    VPNClient* parent_;
+    CSPNetworkClient* parent_;
     bool connected_;
-    std::unique_ptr<infrastructure::TunInterface> tun_interface_;
+    std::unique_ptr<seeded_vpn::infrastructure::TunInterface> tun_interface_;
 };
 
-VPNClient::VPNClient() : impl_(std::make_unique<VPNClientImpl>(this)), status_(ConnectionStatus::DISCONNECTED) {}
+CSPNetworkClient::CSPNetworkClient() : impl_(std::make_unique<CSPNetworkClientImpl>(this)), status_(ConnectionStatus::DISCONNECTED) {}
 
-VPNClient::~VPNClient() = default;
+CSPNetworkClient::~CSPNetworkClient() = default;
 
-bool VPNClient::load_config(const std::string& config_file) {
+bool CSPNetworkClient::load_config(const std::string& config_file) {
     return parse_config_file(config_file);
 }
 
-std::future<bool> VPNClient::connect() {
+std::future<bool> CSPNetworkClient::connect() {
     return impl_->connect(config_);
 }
 
-void VPNClient::disconnect() {
+void CSPNetworkClient::disconnect() {
     impl_->disconnect();
 }
 
-bool VPNClient::is_connected() const {
+bool CSPNetworkClient::is_connected() const {
     return impl_->is_connected();
 }
 
-void VPNClient::set_status_callback(StatusCallback callback) {
+void CSPNetworkClient::set_status_callback(StatusCallback callback) {
     status_callback_ = callback;
 }
 
-void VPNClient::set_data_callback(DataCallback callback) {
+void CSPNetworkClient::set_data_callback(DataCallback callback) {
     data_callback_ = callback;
 }
 
-std::future<bool> VPNClient::send_data(const std::vector<uint8_t>& data) {
+std::future<bool> CSPNetworkClient::send_data(const std::vector<uint8_t>& data) {
     return impl_->send_data(data);
 }
 
-ConnectionStatus VPNClient::get_status() const {
+ConnectionStatus CSPNetworkClient::get_status() const {
     return status_;
 }
 
-std::string VPNClient::get_last_error() const {
+std::string CSPNetworkClient::get_last_error() const {
     return last_error_;
 }
 
-bool VPNClient::parse_config_file(const std::string& config_file) {
+bool CSPNetworkClient::parse_config_file(const std::string& config_file) {
     try {
-        if (config_file.ends_with(".cspvpn")) {
+        if (config_file.length() >= 7 && config_file.substr(config_file.length() - 7) == ".cspvpn") {
             return parse_csp_config(config_file);
-        } else if (config_file.ends_with(".yaml") || config_file.ends_with(".yml")) {
+        } else if ((config_file.length() >= 5 && config_file.substr(config_file.length() - 5) == ".yaml") || 
+                   (config_file.length() >= 4 && config_file.substr(config_file.length() - 4) == ".yml")) {
             return parse_yaml_config(config_file);
         } else {
             last_error_ = "unsupported config file format";
@@ -199,7 +200,7 @@ bool VPNClient::parse_config_file(const std::string& config_file) {
     }
 }
 
-bool VPNClient::parse_csp_config(const std::string& config_file) {
+bool CSPNetworkClient::parse_csp_config(const std::string& config_file) {
     std::ifstream file(config_file);
     if (!file.is_open()) {
         last_error_ = "cannot open config file: " + config_file;
@@ -218,7 +219,7 @@ bool VPNClient::parse_csp_config(const std::string& config_file) {
     while (std::getline(file, line)) {
         if (line.empty() || line[0] == '#') continue;
         
-        if (line.starts_with("remote ")) {
+        if (line.length() > 7 && line.substr(0, 7) == "remote ") {
             std::istringstream iss(line);
             std::string keyword, host;
             uint16_t port;
@@ -226,7 +227,7 @@ bool VPNClient::parse_csp_config(const std::string& config_file) {
                 config_.server_host = host;
                 config_.server_port = port;
             }
-        } else if (line.starts_with("auth-user-pass")) {
+        } else if (line.length() >= 14 && line.substr(0, 14) == "auth-user-pass") {
             std::istringstream iss(line);
             std::string keyword, auth_file;
             if (iss >> keyword >> auth_file) {
@@ -236,13 +237,13 @@ bool VPNClient::parse_csp_config(const std::string& config_file) {
                     std::getline(auth, config_.auth_token);
                 }
             }
-        } else if (line.starts_with("proto ")) {
+        } else if (line.length() >= 6 && line.substr(0, 6) == "proto ") {
             std::istringstream iss(line);
             std::string keyword, protocol;
             if (iss >> keyword >> protocol) {
                 config_.protocol = protocol;
             }
-        } else if (line.starts_with("keepalive ")) {
+        } else if (line.length() >= 10 && line.substr(0, 10) == "keepalive ") {
             std::istringstream iss(line);
             std::string keyword;
             uint32_t interval;
@@ -260,7 +261,7 @@ bool VPNClient::parse_csp_config(const std::string& config_file) {
     return true;
 }
 
-bool VPNClient::parse_yaml_config(const std::string& config_file) {
+bool CSPNetworkClient::parse_yaml_config(const std::string& config_file) {
     try {
         YAML::Node config_node = YAML::LoadFile(config_file);
         
@@ -287,7 +288,7 @@ bool VPNClient::parse_yaml_config(const std::string& config_file) {
     }
 }
 
-void VPNClient::update_status(ConnectionStatus status, const std::string& message) {
+void CSPNetworkClient::update_status(ConnectionStatus status, const std::string& message) {
     status_ = status;
     if (!message.empty()) {
         last_error_ = message;
