@@ -273,7 +273,6 @@ public:
         server_addr.sin_port = htons(port);
         inet_pton(AF_INET, host.c_str(), &server_addr.sin_addr);
         
-        // Create and send AUTH_REQUEST using tunnel protocol
         auto auth_packet = protocol::TunnelPacket::create_auth_request("my-laptop", "token123");
         if (!auth_packet) {
             std::cout << "[ERROR] failed to create auth packet" << std::endl;

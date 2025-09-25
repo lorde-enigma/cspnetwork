@@ -76,6 +76,9 @@ add_executable(cspnetwork-client
     src/client_main.cpp
     src/application/cspnetwork_client.cpp
     src/infrastructure/tun_interface.cpp
+    src/infrastructure/crc32.cpp
+    src/protocol/udp_tunnel_protocol.cpp
+    src/protocol/tunnel_packet.cpp
     src/domain/entities.cpp
 )
 
