@@ -431,8 +431,15 @@ void seeded_vpn::presentation::UDPTunnelServer::send_auth_response(const sockadd
 }
 
 void seeded_vpn::presentation::UDPTunnelServer::send_udp_packet(const sockaddr_in6& client_addr, const std::vector<uint8_t>& packet) {
-    sendto(udp_socket_, packet.data(), packet.size(), 0,
-           (sockaddr*)&client_addr, sizeof(client_addr));
+    char client_ip[INET6_ADDRSTRLEN];
+    inet_ntop(AF_INET6, &client_addr.sin6_addr, client_ip, sizeof(client_ip));
+    std::cout << "[INFO] sending " << packet.size() << " bytes to " << client_ip << ":" << ntohs(client_addr.sin6_port) << std::endl;
+    
+    ssize_t sent = sendto(udp_socket_, packet.data(), packet.size(), 0,
+                         (sockaddr*)&client_addr, sizeof(client_addr));
+    if (sent < 0) {
+        std::cout << "[ERROR] failed to send packet: " << strerror(errno) << std::endl;
+    }
 }
 
 void seeded_vpn::presentation::UDPTunnelServer::setup_server_tun() {

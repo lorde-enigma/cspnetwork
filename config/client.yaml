@@ -1,12 +1,12 @@
 # csp network vpn client configuration (yaml format)
 
 server:
-  host: 127.0.0.1
+  host: 206.0.29.4
   port: 8080
 
 auth:
-  client_id: my-laptop
-  token: secret-auth-token-12345
+  client_id: test-client
+  token: token123
 
 protocol: udp
 keepalive_interval: 30
