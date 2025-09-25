@@ -86,6 +86,7 @@ int main(int argc, char* argv[]) {
         config->set_server_port(port);
         
         server = std::make_unique<seeded_vpn::presentation::UDPTunnelServer>(config);
+        server->set_config_path(config_file);
         server->start();
         
         std::cout << "seeded vpn udp tunnel server running on port " << port << std::endl;

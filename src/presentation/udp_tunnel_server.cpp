@@ -21,12 +21,12 @@ namespace presentation {
 UDPTunnelServer::UDPTunnelServer(std::shared_ptr<domain::VPNConfig> config)
     : config_(config), running_(false), udp_socket_(-1) {
     
-    // Load configuration values
-    load_configuration_values();
-    
     logger_ = [](const std::string& msg) {
         std::cout << "[INFO] " << msg << std::endl;
     };
+    
+    // Load configuration values - will use defaults if config_path_ is empty
+    load_configuration_values();
 }
 
 UDPTunnelServer::~UDPTunnelServer() {
@@ -107,6 +107,7 @@ bool seeded_vpn::presentation::UDPTunnelServer::is_running() const {
 
 void seeded_vpn::presentation::UDPTunnelServer::set_config_path(const std::string& config_path) {
     config_path_ = config_path;
+    load_configuration_values();
 }
 
 void seeded_vpn::presentation::UDPTunnelServer::set_max_clients(size_t max_clients) {
@@ -133,16 +134,23 @@ std::vector<ClientSession> UDPTunnelServer::get_active_sessions() const {
 
 void seeded_vpn::presentation::UDPTunnelServer::server_loop() {
     char buffer[4096];
-    sockaddr_in6 client_addr;
+    sockaddr_in6 client_addr{};
     socklen_t addr_len = sizeof(client_addr);
     
+    logger_("server loop started - waiting for packets on port " + std::to_string(port_));
+    
     while (running_) {
-        ssize_t received = recvfrom(udp_socket_, buffer, sizeof(buffer), 0,
-                                  (sockaddr*)&client_addr, &addr_len);
-        
-        if (received > 0) {
-            std::vector<uint8_t> packet(buffer, buffer + received);
+        ssize_t bytes = recvfrom(udp_socket_, buffer, sizeof(buffer), 0,
+                                (sockaddr*)&client_addr, &addr_len);
+        if (bytes > 0) {
+            char client_ip[INET6_ADDRSTRLEN];
+            inet_ntop(AF_INET6, &client_addr.sin6_addr, client_ip, sizeof(client_ip));
+            logger_("received " + std::to_string(bytes) + " bytes from client: " + std::string(client_ip));
+            
+            std::vector<uint8_t> packet(buffer, buffer + bytes);
             handle_udp_packet(packet, client_addr);
+        } else if (bytes < 0 && errno != EAGAIN && errno != EWOULDBLOCK) {
+            logger_("udp recv error: " + std::string(strerror(errno)));
         }
     }
 }
@@ -178,28 +186,65 @@ void seeded_vpn::presentation::UDPTunnelServer::cleanup_expired_sessions() {
 }
 
 void seeded_vpn::presentation::UDPTunnelServer::handle_udp_packet(const std::vector<uint8_t>& packet, const sockaddr_in6& client_addr) {
+    logger_("handling packet of " + std::to_string(packet.size()) + " bytes");
+    
+    // Log raw packet data for debugging
+    std::string hex_data = "";
+    for (size_t i = 0; i < std::min(packet.size(), size_t(32)); ++i) {
+        char hex[3];
+        snprintf(hex, sizeof(hex), "%02x", packet[i]);
+        hex_data += hex + std::string(" ");
+    }
+    logger_("packet data (first 32 bytes): " + hex_data);
+    
     auto tunnel_packet = protocol::TunnelPacket::deserialize(packet);
-    if (!tunnel_packet || !tunnel_packet->is_valid()) return;
+    if (!tunnel_packet || !tunnel_packet->is_valid()) {
+        logger_("failed to deserialize tunnel packet - invalid format");
+        
+        // Check if it's a simple text message (for testing)
+        std::string text_msg(packet.begin(), packet.end());
+        if (!text_msg.empty() && std::isprint(text_msg[0])) {
+            logger_("received text message: '" + text_msg + "'");
+            // Send simple response for ping messages
+            if (text_msg == "ping") {
+                std::string response = "pong";
+                std::vector<uint8_t> response_data(response.begin(), response.end());
+                send_udp_packet(client_addr, response_data);
+                logger_("sent pong response");
+            }
+        }
+        return;
+    }
+    
+    logger_("successfully deserialized tunnel packet, type: " + std::to_string(static_cast<int>(tunnel_packet->get_type())));
     
     switch (tunnel_packet->get_type()) {
         case protocol::PacketType::AUTH_REQUEST:
+            logger_("processing auth request");
             handle_auth_packet(*tunnel_packet, client_addr);
             break;
             
         case protocol::PacketType::DATA:
+            logger_("processing data packet");
             handle_data_packet(*tunnel_packet, client_addr);
             break;
             
         case protocol::PacketType::KEEPALIVE:
+            logger_("processing keepalive packet");
             handle_keepalive_packet(*tunnel_packet, client_addr);
             break;
             
         case protocol::PacketType::DISCONNECT:
+            logger_("processing disconnect packet");
             handle_disconnect_packet(*tunnel_packet, client_addr);
             break;
             
         case protocol::PacketType::AUTH_RESPONSE:
         case protocol::PacketType::ERROR_RESPONSE:
+            logger_("ignoring client-side packet type: " + std::to_string(static_cast<int>(tunnel_packet->get_type())));
+            break;
+        default:
+            logger_("unknown packet type: " + std::to_string(static_cast<int>(tunnel_packet->get_type())));
             break;
     }
 }
@@ -441,7 +486,8 @@ void seeded_vpn::presentation::UDPTunnelServer::configure_server_interface() {
 void seeded_vpn::presentation::UDPTunnelServer::load_configuration_values() {
     // Load from YAML configuration file
     try {
-        YAML::Node config_node = YAML::LoadFile("config/default.yaml");
+        std::string config_file = config_path_.empty() ? "config/default.yaml" : config_path_;
+        YAML::Node config_node = YAML::LoadFile(config_file);
         
         // Server configuration
         port_ = config_node["server"]["port"].as<uint16_t>(8080);

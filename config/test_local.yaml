@@ -1,16 +1,16 @@
 server:
-  port: 8080
+  port: 1194
   interface: "::"
   protocol: "udp"
   threads: 4
   tunnel_mode: true
 
 vpn:
-  interface_name: "cspvpn-server"
-  server_ip: "10.8.0.1"
-  client_network: "10.8.0.0/24"
+  interface_name: "csptest0"
+  server_ip: "192.168.100.1"
+  client_network: "192.168.100.0/24"
   ipv6_prefix: "2a0e:b107:1ef0::"
-  mtu: 1280
+  mtu: 1500
   seed_file: "/etc/cspnetwork/seeds.dat"
 
 seeded_ipv6:
@@ -28,7 +28,7 @@ crypto:
 network:
   tunnel_type: "tun"
   protocol: "udp"
-  server_tun_interface: "cspvpn-server"
+  server_tun_interface: "csptest0"
   routing_table: 200
   firewall_mark: 0x1000
   enable_forwarding: true
