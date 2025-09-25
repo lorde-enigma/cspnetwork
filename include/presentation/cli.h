@@ -44,6 +44,13 @@ public:
     std::string getUsage() const override;
 };
 
+class ClientCommand : public CLICommand {
+public:
+    void execute(const std::vector<std::string>& args) override;
+    std::string getDescription() const override;
+    std::string getUsage() const override;
+};
+
 class CLIManager {
     std::map<std::string, std::unique_ptr<CLICommand>> commands;
     

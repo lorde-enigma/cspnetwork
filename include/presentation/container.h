@@ -3,6 +3,7 @@
 #include "../domain/interfaces.h"
 #include "../application/use_cases.h"
 #include "../application/services.h"
+#include "../application/client_generator.h"
 #include "../infrastructure/repositories.h"
 #include <memory>
 #include <string>
@@ -22,6 +23,7 @@ public:
     std::shared_ptr<domain::AddressPoolManager> get_address_pool_manager();
     std::shared_ptr<domain::SeedManager> get_seed_manager();
     std::shared_ptr<domain::SecurityValidator> get_security_validator();
+    std::shared_ptr<application::ClientGeneratorService> get_client_generator_service();
 
 private:
     DependencyContainer() = default;
@@ -39,6 +41,7 @@ private:
     std::shared_ptr<domain::AddressPoolManager> address_pool_manager_;
     std::shared_ptr<domain::SeedManager> seed_manager_;
     std::shared_ptr<domain::SecurityValidator> security_validator_;
+    std::shared_ptr<application::ClientGeneratorService> client_generator_service_;
 };
 
 }

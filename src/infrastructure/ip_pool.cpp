@@ -240,11 +240,11 @@ std::vector<std::string> IPPool::get_ranges() const {
     return ranges;
 }
 
-bool IPPool::save_to_file(const std::string& file_path) const {
+bool IPPool::save_to_file(const std::string&) const {
     return true;
 }
 
-bool IPPool::load_from_file(const std::string& file_path) {
+bool IPPool::load_from_file(const std::string&) {
     return true;
 }
 

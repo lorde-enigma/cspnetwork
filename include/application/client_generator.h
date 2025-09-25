@@ -31,6 +31,7 @@ public:
     
     ClientConfiguration generate_client(const ClientGenerationRequest& request);
     std::string generate_config_file(const ClientConfiguration& config, const std::string& format);
+    void generate_client_config(const std::string& client_name, const std::string& output_dir);
     bool revoke_client(const std::string& client_id);
     std::vector<std::string> list_active_clients();
 

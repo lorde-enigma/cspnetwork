@@ -202,6 +202,18 @@ HttpResponse VPNRestServer::route_request(const HttpRequest& request) {
         return handle_config_update(request);
     }
     
+    if (request.method == "POST" && request.path == "/api/v1/clients") {
+        return handle_client_generate(request);
+    }
+    
+    if (request.method == "GET" && request.path == "/api/v1/clients") {
+        return handle_clients_list(request);
+    }
+    
+    if (request.method == "DELETE" && path_matches(request.path, "/api/v1/clients/")) {
+        return handle_client_revoke(request);
+    }
+    
     return handle_not_found(request);
 }
 
@@ -277,7 +289,7 @@ HttpResponse VPNRestServer::handle_connection_status(const HttpRequest& request)
     }
 }
 
-HttpResponse VPNRestServer::handle_connections_list(const HttpRequest& request) {
+HttpResponse VPNRestServer::handle_connections_list(const HttpRequest&) {
     try {
         auto connection_service = container_.get_connection_service();
         std::vector<domain::ConnectionContext> connections;
@@ -292,7 +304,7 @@ HttpResponse VPNRestServer::handle_connections_list(const HttpRequest& request) 
     }
 }
 
-HttpResponse VPNRestServer::handle_address_allocate(const HttpRequest& request) {
+HttpResponse VPNRestServer::handle_address_allocate(const HttpRequest&) {
     try {
         auto connection_service = container_.get_connection_service();
         domain::SeedValue seed = std::random_device{}();
@@ -312,7 +324,7 @@ HttpResponse VPNRestServer::handle_address_allocate(const HttpRequest& request) 
     }
 }
 
-HttpResponse VPNRestServer::handle_address_release(const HttpRequest& request) {
+HttpResponse VPNRestServer::handle_address_release(const HttpRequest&) {
     try {
         HttpResponse response;
         response.body = JsonHelper::serialize_error("address released", "success");
@@ -324,7 +336,7 @@ HttpResponse VPNRestServer::handle_address_release(const HttpRequest& request) {
     }
 }
 
-HttpResponse VPNRestServer::handle_address_status(const HttpRequest& request) {
+HttpResponse VPNRestServer::handle_address_status(const HttpRequest&) {
     try {
         auto connection_service = container_.get_connection_service();
         size_t active_count = 0;
@@ -339,7 +351,7 @@ HttpResponse VPNRestServer::handle_address_status(const HttpRequest& request) {
     }
 }
 
-HttpResponse VPNRestServer::handle_monitoring_stats(const HttpRequest& request) {
+HttpResponse VPNRestServer::handle_monitoring_stats(const HttpRequest&) {
     try {
         auto connection_service = container_.get_connection_service();
         domain::ConnectionContext stats{};
@@ -354,7 +366,7 @@ HttpResponse VPNRestServer::handle_monitoring_stats(const HttpRequest& request) 
     }
 }
 
-HttpResponse VPNRestServer::handle_monitoring_health(const HttpRequest& request) {
+HttpResponse VPNRestServer::handle_monitoring_health(const HttpRequest&) {
     try {
         HttpResponse response;
         response.body = R"({"status": "healthy", "timestamp": ")" + std::to_string(std::time(nullptr)) + R"("})";
@@ -547,6 +559,91 @@ domain::ConnectionId JsonHelper::parse_connection_id(const std::string& json) {
     }
     
     throw std::invalid_argument("invalid json: missing connection_id");
+}
+
+HttpResponse VPNRestServer::handle_client_generate(const HttpRequest& request) {
+    try {
+        std::string client_id = JsonHelper::parse_client_id(request.body);
+        std::string output_dir = "config";
+        
+        std::regex dir_pattern("\"output_dir\"\\s*:\\s*\"([^\"]+)\"");
+        std::smatch match;
+        if (std::regex_search(request.body, match, dir_pattern)) {
+            output_dir = match[1].str();
+        }
+        
+        auto client_generator = container_.get_client_generator_service();
+        client_generator->generate_client_config(client_id, output_dir);
+        
+        HttpResponse response;
+        response.status_code = 201;
+        response.body = JsonHelper::serialize_client_generated(client_id, output_dir);
+        
+        return response;
+        
+    } catch (const std::exception& e) {
+        return handle_error(e.what(), 400);
+    }
+}
+
+HttpResponse VPNRestServer::handle_clients_list(const HttpRequest&) {
+    try {
+        HttpResponse response;
+        response.body = JsonHelper::serialize_clients_list({});
+        
+        return response;
+        
+    } catch (const std::exception& e) {
+        return handle_error(e.what());
+    }
+}
+
+HttpResponse VPNRestServer::handle_client_revoke(const HttpRequest& request) {
+    try {
+        std::string client_id = extract_path_parameter(request.path, "/api/v1/clients/");
+        
+        HttpResponse response;
+        response.body = JsonHelper::serialize_client_revoked(client_id);
+        
+        return response;
+        
+    } catch (const std::exception& e) {
+        return handle_error(e.what(), 400);
+    }
+}
+
+std::string JsonHelper::serialize_client_generated(const std::string& client_id, const std::string& output_dir) {
+    std::ostringstream json;
+    json << "{"
+         << R"("client_id": ")" << client_id << R"(",)"
+         << R"("output_dir": ")" << output_dir << R"(",)"
+         << R"("yaml_config": ")" << output_dir << "/" << client_id << ".yaml" << R"(",)"
+         << R"("cspvpn_config": ")" << output_dir << "/" << client_id << ".cspvpn" << R"(",)"
+         << R"("status": "generated")"
+         << "}";
+    return json.str();
+}
+
+std::string JsonHelper::serialize_clients_list(const std::vector<std::string>& clients) {
+    std::ostringstream json;
+    json << R"({"clients": [)";
+    
+    for (size_t i = 0; i < clients.size(); ++i) {
+        if (i > 0) json << ",";
+        json << R"(")" << clients[i] << R"(")";
+    }
+    
+    json << "]}";
+    return json.str();
+}
+
+std::string JsonHelper::serialize_client_revoked(const std::string& client_id) {
+    std::ostringstream json;
+    json << "{"
+         << R"("client_id": ")" << client_id << R"(",)"
+         << R"("status": "revoked")"
+         << "}";
+    return json.str();
 }
 
 std::unordered_map<std::string, std::string> JsonHelper::parse_config_update(const std::string& json) {

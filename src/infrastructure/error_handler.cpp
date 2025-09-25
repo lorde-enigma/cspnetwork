@@ -1,19 +1,12 @@
 #include "infrastructure/error_handler.h"
 #include "infrastructure/monitoring_system.h"
 #include <algorithm>
+#include <cxxabi.h>
+#include <execinfo.h>
+#include <iomanip>
 #include <random>
 #include <sstream>
 #include <thread>
-#void ErrorHandler::handle_error(const VPNError &error, const std::string &) {
-log_error(error.get_message(), ErrorSeverity::ERROR);
-}
-
-void ErrorHandler::handle_warning(const std::string &message,
-                                  const std::string &) {
-  log_error(message, ErrorSeverity::WARNING);
-}
-#include <cxxabi.h>
-#include <iomanip>
 
 namespace CipherProxy::Infrastructure {
 
@@ -50,7 +43,7 @@ void ErrorHandlerManager::initialize() {
                                    "security_threat", error.message);
 
         if (error.severity == ErrorSeverity::CRITICAL) {
-          auto &metrics = monitoring.get_metrics_collector();
+          monitoring.get_metrics_collector();
         }
         return true;
       });

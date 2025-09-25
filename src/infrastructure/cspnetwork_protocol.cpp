@@ -3,6 +3,7 @@
 #include <chrono>
 #include <cstring>
 #include <openssl/sha.h>
+#include <openssl/evp.h>
 
 namespace seeded_vpn::infrastructure {
 
@@ -164,10 +165,12 @@ std::array<uint8_t, 16> VPNPacket::calculate_checksum() const {
   data_for_hash.insert(data_for_hash.end(), payload_.begin(), payload_.end());
 
   std::array<uint8_t, 16> hash;
-  SHA256_CTX sha256;
-  SHA256_Init(&sha256);
-  SHA256_Update(&sha256, data_for_hash.data(), data_for_hash.size());
-  SHA256_Final(hash.data(), &sha256);
+  EVP_MD_CTX* ctx = EVP_MD_CTX_new();
+  EVP_DigestInit_ex(ctx, EVP_sha256(), nullptr);
+  EVP_DigestUpdate(ctx, data_for_hash.data(), data_for_hash.size());
+  unsigned int hash_len;
+  EVP_DigestFinal_ex(ctx, hash.data(), &hash_len);
+  EVP_MD_CTX_free(ctx);
 
   return hash;
 }
@@ -319,10 +322,9 @@ void VPNStateMachine::update_activity() {
 
 VPNProtocolHandler::VPNProtocolHandler() : next_sequence_number_(1) {}
 
-void VPNProtocolHandler::initialize(
-    const domain::ConnectionParameters &params) {
+void VPNProtocolHandler::initialize(const domain::ConnectionParameters &) {
   state_machine_.set_state_change_callback(
-      [this](VPNConnectionState old_state, VPNConnectionState new_state) {
+      [this](VPNConnectionState, VPNConnectionState new_state) {
         if (new_state == VPNConnectionState::ERROR_STATE && error_handler_) {
           error_handler_("state machine error transition");
         }

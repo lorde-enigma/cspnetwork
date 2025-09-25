@@ -2,6 +2,7 @@
 #include "../../include/infrastructure/repositories.h"
 #include "../../include/infrastructure/config_manager.h"
 #include "../../include/application/services.h"
+#include "../../include/application/client_generator.h"
 #include <stdexcept>
 #include <filesystem>
 
@@ -66,6 +67,12 @@ void DependencyContainer::initialize(const std::string& config_file_path) {
         logger_
     );
     
+    client_generator_service_ = std::make_shared<application::ClientGeneratorService>(
+        seed_manager_,
+        address_pool_manager_,
+        logger_
+    );
+    
     initialized_ = true;
 }
 
@@ -116,6 +123,13 @@ std::shared_ptr<domain::SecurityValidator> DependencyContainer::get_security_val
         throw std::runtime_error("security validator not initialized");
     }
     return security_validator_;
+}
+
+std::shared_ptr<application::ClientGeneratorService> DependencyContainer::get_client_generator_service() {
+    if (!client_generator_service_) {
+        throw std::runtime_error("client generator service not initialized");
+    }
+    return client_generator_service_;
 }
 
 }

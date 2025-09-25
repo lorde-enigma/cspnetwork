@@ -39,6 +39,7 @@ add_executable(cspnetwork
     src/main.cpp
     src/application/services.cpp
     src/application/cspnetwork_client.cpp
+    src/application/client_generator.cpp
     src/infrastructure/config_manager.cpp
     src/infrastructure/error_handler.cpp
     src/infrastructure/tun_interface.cpp
@@ -54,6 +55,11 @@ add_executable(cspnetwork
     src/infrastructure/ipv6_address_manager.cpp
     src/infrastructure/ip_pool.cpp
     src/infrastructure/crc32.cpp
+    src/infrastructure/seed_generator.cpp
+    src/infrastructure/ipv6_seeded_generator.cpp
+    src/infrastructure/seeded_connection_manager.cpp
+    src/infrastructure/seeded_system_monitor.cpp
+    src/infrastructure/connection_seeder.cpp
     src/presentation/server.cpp
     src/presentation/cli.cpp
     src/presentation/container.cpp
@@ -66,25 +72,10 @@ add_executable(cspnetwork
     src/domain/cspnetwork_config.cpp
 )
 
-add_executable(cspvpn-client
+add_executable(cspnetwork-client
     src/client_main.cpp
     src/application/cspnetwork_client.cpp
     src/infrastructure/tun_interface.cpp
-    src/domain/entities.cpp
-)
-
-add_executable(cspvpn-gen
-    src/generator_main.cpp
-    src/application/client_generator.cpp
-    src/infrastructure/config_manager.cpp
-    src/infrastructure/monitoring_system.cpp
-    src/infrastructure/repositories.cpp
-    src/infrastructure/seed_generator.cpp
-    src/infrastructure/ipv6_address_manager.cpp
-    src/infrastructure/ipv6_seeded_generator.cpp
-    src/infrastructure/seeded_connection_manager.cpp
-    src/infrastructure/seeded_system_monitor.cpp
-    src/infrastructure/connection_seeder.cpp
     src/domain/entities.cpp
 )
 
@@ -111,21 +102,7 @@ target_link_libraries(cspnetwork-tests
     dl
 )
 
-# Client Test Executable
-add_executable(cspvpn-client-test 
-    mindvoices/client_test.cpp
-    src/protocol/udp_tunnel_protocol.cpp
-    src/protocol/tunnel_packet.cpp
-    src/infrastructure/crc32.cpp
-)
-target_include_directories(cspvpn-client-test PRIVATE include)
-target_link_libraries(cspvpn-client-test
-    Threads::Threads
-    ${YAMLCPP_LIBRARIES}
-    OpenSSL::SSL
-    OpenSSL::Crypto
-    dl
-)
+
 
 # CSP Network Client Core - removed (no main function needed)
 
@@ -137,7 +114,7 @@ target_link_libraries(cspnetwork
     dl
 )
 
-target_link_libraries(cspvpn-client
+target_link_libraries(cspnetwork-client
     Threads::Threads
     ${YAMLCPP_LIBRARIES}
     OpenSSL::SSL
@@ -145,13 +122,7 @@ target_link_libraries(cspvpn-client
     dl
 )
 
-target_link_libraries(cspvpn-gen
-    Threads::Threads
-    ${YAMLCPP_LIBRARIES}
-    OpenSSL::SSL
-    OpenSSL::Crypto
-    dl
-)
+
 
 # target_link_libraries(cspnetwork-tests
 #     Threads::Threads
@@ -162,26 +133,22 @@ target_link_libraries(cspvpn-gen
 # )
 
 target_include_directories(cspnetwork PRIVATE ${YAMLCPP_INCLUDE_DIRS})
-target_include_directories(cspvpn-client PRIVATE ${YAMLCPP_INCLUDE_DIRS})
-target_include_directories(cspvpn-gen PRIVATE ${YAMLCPP_INCLUDE_DIRS})
+target_include_directories(cspnetwork-client PRIVATE ${YAMLCPP_INCLUDE_DIRS})
 # target_include_directories(cspnetwork-tests PRIVATE ${YAMLCPP_INCLUDE_DIRS})
 
 target_compile_options(cspnetwork PRIVATE ${YAMLCPP_CFLAGS_OTHER})
-target_compile_options(cspvpn-client PRIVATE ${YAMLCPP_CFLAGS_OTHER})
-target_compile_options(cspvpn-gen PRIVATE ${YAMLCPP_CFLAGS_OTHER})
+target_compile_options(cspnetwork-client PRIVATE ${YAMLCPP_CFLAGS_OTHER})
 # target_compile_options(cspnetwork-tests PRIVATE ${YAMLCPP_CFLAGS_OTHER})
 
 set_target_properties(cspnetwork PROPERTIES
     RUNTIME_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}
 )
 
-set_target_properties(cspvpn-client PROPERTIES
+set_target_properties(cspnetwork-client PROPERTIES
     RUNTIME_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}
 )
 
-set_target_properties(cspvpn-gen PROPERTIES
-    RUNTIME_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}
-)
+
 
 # set_target_properties(cspnetwork-tests PROPERTIES
 #     RUNTIME_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}
@@ -189,7 +156,7 @@ set_target_properties(cspvpn-gen PROPERTIES
 
 set(CMAKE_INSTALL_PREFIX "/usr/local" CACHE PATH "Installation prefix")
 
-install(TARGETS cspnetwork cspvpn-client cspvpn-gen
+install(TARGETS cspnetwork cspnetwork-client cspnetwork-client
     RUNTIME DESTINATION bin
     COMPONENT Runtime
 )
@@ -269,7 +236,7 @@ add_custom_target(uninstall
     COMMAND systemctl disable cspnetwork.service || true
     COMMAND rm -f /etc/systemd/system/cspnetwork.service
     COMMAND rm -f /usr/local/bin/cspnetwork
-    COMMAND rm -f /usr/local/bin/cspvpn-client
+    COMMAND rm -f /usr/local/bin/cspnetwork-client
     COMMAND rm -rf /etc/cspnetwork
     COMMAND rm -rf /usr/local/share/cspnetwork
     COMMAND systemctl daemon-reload || true

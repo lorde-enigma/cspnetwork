@@ -7,6 +7,7 @@
 #include <iomanip>
 #include <nlohmann/json.hpp>
 #include <openssl/sha.h>
+#include <openssl/evp.h>
 #include <yaml-cpp/yaml.h>
 #include <sys/inotify.h>
 #include <unistd.h>
@@ -684,10 +685,12 @@ std::string ConfigManager::compute_checksum() const {
     std::string config_string = serialize_json_config();
     
     unsigned char hash[SHA256_DIGEST_LENGTH];
-    SHA256_CTX sha256;
-    SHA256_Init(&sha256);
-    SHA256_Update(&sha256, config_string.c_str(), config_string.size());
-    SHA256_Final(hash, &sha256);
+    EVP_MD_CTX* ctx = EVP_MD_CTX_new();
+    EVP_DigestInit_ex(ctx, EVP_sha256(), nullptr);
+    EVP_DigestUpdate(ctx, config_string.c_str(), config_string.size());
+    unsigned int hash_len;
+    EVP_DigestFinal_ex(ctx, hash, &hash_len);
+    EVP_MD_CTX_free(ctx);
     
     std::ostringstream oss;
     for (int i = 0; i < SHA256_DIGEST_LENGTH; ++i) {

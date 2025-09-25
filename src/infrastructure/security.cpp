@@ -232,7 +232,7 @@ void HandshakeProtocol::initialize_client(const std::string& client_id, const st
     RAND_bytes(client_random_.data(), client_random_.size());
 }
 
-void HandshakeProtocol::initialize_server(const std::string& server_id, const std::vector<uint8_t>& server_certificate) {
+void HandshakeProtocol::initialize_server(const std::string& server_id, const std::vector<uint8_t>&) {
     server_id_ = server_id;
     RAND_bytes(server_random_.data(), server_random_.size());
 }
@@ -353,11 +353,11 @@ void HandshakeProtocol::calculate_shared_secret() {
     shared_secret_ = KeyDerivation::generate_random_bytes(32);
 }
 
-std::vector<uint8_t> HandshakeProtocol::sign_data(const std::vector<uint8_t>& data) {
+std::vector<uint8_t> HandshakeProtocol::sign_data(const std::vector<uint8_t>&) {
     return KeyDerivation::generate_random_bytes(64);
 }
 
-bool HandshakeProtocol::verify_signature(const std::vector<uint8_t>& data, const std::vector<uint8_t>& signature) {
+bool HandshakeProtocol::verify_signature(const std::vector<uint8_t>&, const std::vector<uint8_t>& signature) {
     return signature.size() == 64;
 }
 
@@ -775,7 +775,7 @@ bool SecurityManager::verify_packet_integrity(const std::vector<uint8_t>& packet
     return !packet_data.empty() && !client_id.empty();
 }
 
-bool SecurityManager::encrypt_packet(const std::vector<uint8_t>& packet_data, const std::string& client_id, std::vector<uint8_t>& encrypted_data) {
+bool SecurityManager::encrypt_packet(const std::vector<uint8_t>& packet_data, const std::string&, std::vector<uint8_t>& encrypted_data) {
     encrypted_data = encrypt_data(packet_data, 0);
     return !encrypted_data.empty();
 }

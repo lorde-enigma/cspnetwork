@@ -6,6 +6,8 @@
 #include <sstream>
 #include <chrono>
 #include <iomanip>
+#include <filesystem>
+#include <fstream>
 
 namespace seeded_vpn::application {
 
@@ -118,6 +120,31 @@ std::string ClientGeneratorService::generate_client_id(const std::string& name) 
     oss << "-" << dis(gen);
     
     return oss.str();
+}
+
+void ClientGeneratorService::generate_client_config(const std::string& client_name, const std::string& output_dir) {
+    ClientGenerationRequest request;
+    request.client_name = client_name;
+    
+    auto config = generate_client(request);
+    
+    std::filesystem::create_directories(output_dir);
+    
+    std::string yaml_content = generate_config_file(config, "yaml");
+    std::string cspvpn_content = generate_config_file(config, "cspvpn");
+    
+    std::string yaml_path = output_dir + "/" + client_name + ".yaml";
+    std::string cspvpn_path = output_dir + "/" + client_name + ".cspvpn";
+    
+    std::ofstream yaml_file(yaml_path);
+    yaml_file << yaml_content;
+    yaml_file.close();
+    
+    std::ofstream cspvpn_file(cspvpn_path);
+    cspvpn_file << cspvpn_content;
+    cspvpn_file.close();
+    
+    logger_->info("client config files written: " + yaml_path + " and " + cspvpn_path);
 }
 
 std::string ClientGeneratorService::generate_auth_token() {

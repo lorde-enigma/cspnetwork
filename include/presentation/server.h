@@ -7,6 +7,7 @@
 #include <functional>
 #include <thread>
 #include <atomic>
+#include <unordered_map>
 
 namespace seeded_vpn::presentation {
 
@@ -71,6 +72,10 @@ private:
     HttpResponse handle_config_get(const HttpRequest& request);
     HttpResponse handle_config_update(const HttpRequest& request);
     
+    HttpResponse handle_client_generate(const HttpRequest& request);
+    HttpResponse handle_clients_list(const HttpRequest& request);
+    HttpResponse handle_client_revoke(const HttpRequest& request);
+    
     HttpResponse handle_not_found(const HttpRequest& request);
     HttpResponse handle_error(const std::string& error_message, int status_code = 500);
     
@@ -89,6 +94,9 @@ public:
     static std::string serialize_address_info(const domain::IPv6Address& address, bool allocated = true);
     static std::string serialize_config_value(const std::string& key, const std::string& value);
     static std::string serialize_error(const std::string& error, const std::string& details = "");
+    static std::string serialize_client_generated(const std::string& client_id, const std::string& output_dir);
+    static std::string serialize_clients_list(const std::vector<std::string>& clients);
+    static std::string serialize_client_revoked(const std::string& client_id);
     
     static domain::ClientId parse_client_id(const std::string& json);
     static domain::ConnectionId parse_connection_id(const std::string& json);

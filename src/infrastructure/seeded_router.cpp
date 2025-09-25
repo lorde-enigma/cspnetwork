@@ -514,7 +514,7 @@ bool SeededRouter::route_packet(const std::string& client_id, const std::vector<
     return true;
 }
 
-bool SeededRouter::setup_client_routing(const std::string& client_id, const domain::SeedContext& context) {
+bool SeededRouter::setup_client_routing(const std::string& client_id, const domain::SeedContext&) {
     std::lock_guard<std::mutex> lock(router_mutex_);
     
     auto addresses = generate_route_addresses(client_id, max_routes_per_client_.load());

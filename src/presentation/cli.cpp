@@ -6,7 +6,7 @@
 
 namespace SeededVPN::Presentation {
 
-void StatusCommand::execute(const std::vector<std::string>& args) {
+void StatusCommand::execute(const std::vector<std::string>&) {
 	auto& container = seeded_vpn::presentation::DependencyContainer::instance();
 	auto connection_service = container.get_connection_service();
 	
@@ -127,6 +127,39 @@ void ConfigCommand::execute(const std::vector<std::string>& args) {
 	}
 }
 
+void ClientCommand::execute(const std::vector<std::string>& args) {
+	auto& container = seeded_vpn::presentation::DependencyContainer::instance();
+	auto client_generator = container.get_client_generator_service();
+	
+	try {
+		if (args.empty() || args[0] == "list") {
+			std::cout << "Client Configuration Management:\n";
+			std::cout << "================================\n";
+			std::cout << "List functionality not yet implemented\n";
+			
+		} else if (args[0] == "generate" && args.size() >= 2) {
+			std::string client_id = args[1];
+			std::string output_dir = args.size() > 2 ? args[2] : "config";
+			
+			client_generator->generate_client_config(client_id, output_dir);
+			
+			std::cout << "client configuration generated successfully:\n";
+			std::cout << "  client id: " << client_id << "\n";
+			std::cout << "  yaml config: " << output_dir << "/" << client_id << ".yaml\n";
+			std::cout << "  cspvpn config: " << output_dir << "/" << client_id << ".cspvpn\n";
+			
+		} else if (args[0] == "revoke" && args.size() >= 2) {
+			std::string client_id = args[1];
+			std::cout << "Revoke functionality for client " << client_id << " not yet implemented\n";
+			
+		} else {
+			std::cout << "usage: client [list|generate <client_id> [output_dir]|revoke <client_id>]\n";
+		}
+	} catch (const std::exception& e) {
+		std::cerr << "failed to manage client configurations: " << e.what() << "\n";
+	}
+}
+
 std::string ConfigCommand::getDescription() const {
 	return "manage server configuration";
 }
@@ -135,11 +168,20 @@ std::string ConfigCommand::getUsage() const {
 	return "config [show|reload|validate]";
 }
 
+std::string ClientCommand::getDescription() const {
+	return "manage client configurations";
+}
+
+std::string ClientCommand::getUsage() const {
+	return "client [list|generate <client_id> [output_dir]|revoke <client_id>]";
+}
+
 CLIManager::CLIManager() {
 	registerCommand("status", std::make_unique<StatusCommand>());
 	registerCommand("connections", std::make_unique<ConnectionsCommand>());
 	registerCommand("pool", std::make_unique<AddressPoolCommand>());
 	registerCommand("config", std::make_unique<ConfigCommand>());
+	registerCommand("client", std::make_unique<ClientCommand>());
 }
 
 bool CLIManager::executeCommand(const std::string& commandLine) {
