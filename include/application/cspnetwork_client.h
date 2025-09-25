@@ -8,6 +8,11 @@
 
 namespace cspnetwork::application {
 
+struct Route {
+    std::string network;
+    std::string gateway;
+};
+
 struct ClientConfig {
     std::string server_host;
     uint16_t server_port;
@@ -18,6 +23,7 @@ struct ClientConfig {
     uint32_t keepalive_interval;
     uint32_t connection_timeout;
     std::string log_level;
+    std::vector<Route> routes;
 };
 
 enum class ConnectionStatus {

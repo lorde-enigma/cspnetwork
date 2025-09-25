@@ -89,7 +89,7 @@ int main(int argc, char* argv[]) {
         server->set_config_path(config_file);
         server->start();
         
-        std::cout << "seeded vpn udp tunnel server running on port " << port << std::endl;
+        std::cout << "seeded vpn udp tunnel server running on port " << config->get_server_port() << std::endl;
         std::cout << "tunnel interface: " << config->get_tunnel_interface_name() << std::endl;
         std::cout << "ip range: " << config->get_ip_range() << std::endl;
         std::cout << "press ctrl+c to stop" << std::endl;

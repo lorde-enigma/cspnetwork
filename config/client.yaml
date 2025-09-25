@@ -15,9 +15,7 @@ auto_reconnect: true
 
 log_level: info
 
-# optional routing configuration
+# route all traffic through vpn (default route)
 routes:
-  - network: "192.168.1.0/24"
-    gateway: "10.8.0.1"
-  - network: "10.0.0.0/8" 
+  - network: "0.0.0.0/0"
     gateway: "10.8.0.1"

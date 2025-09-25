@@ -70,10 +70,13 @@ public:
                 udp_receive_loop();
             }).detach();
             
-            // Comentado para teste - não capturar rota default
-            // if (!tun_interface_->add_route("0.0.0.0/1", "10.8.0.1")) {
-            //     std::cerr << "warning: failed to add default route" << std::endl;
-            // }
+            // Apply routes from configuration
+            for (const auto& route : config.routes) {
+                std::cout << "[DEBUG] adding route: " << route.network << " via " << route.gateway << std::endl;
+                if (!tun_interface_->add_route(route.network, route.gateway)) {
+                    std::cout << "[WARNING] failed to add route: " << route.network << std::endl;
+                }
+            }
             
             connected_ = true;
             parent_->update_status(ConnectionStatus::CONNECTED, "tunnel established on " + tun_interface_->get_device_name());
@@ -464,6 +467,16 @@ bool CSPNetworkClient::parse_yaml_config(const std::string& config_file) {
         config_.keepalive_interval = config_node["keepalive_interval"].as<uint32_t>(60);
         config_.connection_timeout = config_node["connection_timeout"].as<uint32_t>(30);
         config_.log_level = config_node["log_level"].as<std::string>("info");
+
+        // Parse routes if present
+        if (config_node["routes"]) {
+            for (const auto& route_node : config_node["routes"]) {
+                Route route;
+                route.network = route_node["network"].as<std::string>();
+                route.gateway = route_node["gateway"].as<std::string>();
+                config_.routes.push_back(route);
+            }
+        }
 
         if (config_.server_host.empty() || config_.client_id.empty()) {
             last_error_ = "missing required config fields";
