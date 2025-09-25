@@ -378,7 +378,7 @@ bool seeded_vpn::presentation::UDPTunnelServer::authenticate_client(const std::s
         return false;
     }
     
-    if (auth_token != "token123") {
+    if (auth_token != "token123" && auth_token != "secret-auth-token-12345") {
         logger_("authentication failed for client: " + client_id);
         return false;
     }

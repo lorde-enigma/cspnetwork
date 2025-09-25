@@ -52,7 +52,7 @@ public:
             
             parent_->update_status(ConnectionStatus::CONNECTING, "authenticating");
             
-            if (!establish_udp_connection(config.server_host, config.server_port)) {
+            if (!establish_udp_connection(config)) {
                 parent_->update_status(ConnectionStatus::DISCONNECTED, "failed to connect to server");
                 tun_interface_->destroy_tun();
                 promise->set_value(false);
@@ -146,7 +146,7 @@ public:
         }
     }
     
-    bool establish_udp_connection(const std::string& host, int port) {
+    bool establish_udp_connection(const ClientConfig& config) {
         // Create UDP socket for persistent connection
         udp_socket_ = socket(AF_INET, SOCK_DGRAM, 0);
         if (udp_socket_ < 0) {
@@ -156,11 +156,11 @@ public:
         
         server_addr_ = {};
         server_addr_.sin_family = AF_INET;
-        server_addr_.sin_port = htons(port);
-        inet_pton(AF_INET, host.c_str(), &server_addr_.sin_addr);
+        server_addr_.sin_port = htons(config.server_port);
+        inet_pton(AF_INET, config.server_host.c_str(), &server_addr_.sin_addr);
         
         // Send AUTH_REQUEST
-        auto auth_packet = protocol::TunnelPacket::create_auth_request("my-laptop", "token123");
+        auto auth_packet = protocol::TunnelPacket::create_auth_request(config.client_id, config.auth_token);
         if (!auth_packet) {
             std::cout << "[ERROR] failed to create auth packet" << std::endl;
             close(udp_socket_);
@@ -173,7 +173,7 @@ public:
                              (sockaddr*)&server_addr_, sizeof(server_addr_));
         
         if (sent > 0) {
-            std::cout << "[DEBUG] sent AUTH_REQUEST " << sent << " bytes to " << host << ":" << port << std::endl;
+            std::cout << "[DEBUG] sent AUTH_REQUEST " << sent << " bytes to " << config.server_host << ":" << config.server_port << std::endl;
             
             // Wait for AUTH_RESPONSE
             char buffer[1024];
@@ -273,7 +273,8 @@ public:
         server_addr.sin_port = htons(port);
         inet_pton(AF_INET, host.c_str(), &server_addr.sin_addr);
         
-        auto auth_packet = protocol::TunnelPacket::create_auth_request("my-laptop", "token123");
+        // Note: test_connection should be updated to receive config parameter
+        auto auth_packet = protocol::TunnelPacket::create_auth_request("test-client", "test-token");
         if (!auth_packet) {
             std::cout << "[ERROR] failed to create auth packet" << std::endl;
             close(sock);

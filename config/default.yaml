@@ -49,3 +49,11 @@ security:
   connection_timeout: 300
   rate_limit: 100
   enable_ddos_protection: true
+
+authentication:
+  # Valid client credentials
+  clients:
+    - client_id: "my-laptop"
+      token: "secret-auth-token-12345"
+    - client_id: "test-client" 
+      token: "token123"
