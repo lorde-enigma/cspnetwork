@@ -2,16 +2,16 @@
 # similar to openvpn format
 
 # server connection
-remote fd00::1 8080
+remote 206.0.29.4 8080
 
 # client identification
-client-id my-laptop
-auth-token secret-auth-token-12345
-client-seed 1234567890
-exit-ip 10.8.0.123
+client-id ipv6-client-deploy
+auth-token secret-ipv6-token-deploy-2025
+client-seed 2025092567890
+exit-ip 10.8.0.200
 
 # connection settings
-protocol tcp
+protocol udp
 keepalive 30
 connect-timeout 10
 auto-reconnect true

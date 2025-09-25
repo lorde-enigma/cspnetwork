@@ -53,9 +53,10 @@ public:
             
             tun_interface_->start_packet_loop();
             
-            if (!tun_interface_->add_route("0.0.0.0/1", "10.8.0.1")) {
-                std::cerr << "warning: failed to add default route" << std::endl;
-            }
+            // Comentado para teste - não capturar rota default
+            // if (!tun_interface_->add_route("0.0.0.0/1", "10.8.0.1")) {
+            //     std::cerr << "warning: failed to add default route" << std::endl;
+            // }
             
             connected_ = true;
             parent_->update_status(ConnectionStatus::CONNECTED, "tunnel established on " + tun_interface_->get_device_name());
@@ -68,7 +69,7 @@ public:
     void disconnect() {
         if (connected_ && tun_interface_) {
             tun_interface_->stop_packet_loop();
-            tun_interface_->remove_route("0.0.0.0/1");
+            // tun_interface_->remove_route("0.0.0.0/1");
             tun_interface_->destroy_tun();
         }
         connected_ = false;
