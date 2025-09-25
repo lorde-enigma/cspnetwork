@@ -156,13 +156,13 @@ set_target_properties(cspnetwork-client PROPERTIES
 
 set(CMAKE_INSTALL_PREFIX "/usr/local" CACHE PATH "Installation prefix")
 
-install(TARGETS cspnetwork cspnetwork-client cspnetwork-client
-    RUNTIME DESTINATION bin
+install(TARGETS cspnetwork cspnetwork-client
+    RUNTIME DESTINATION /usr/local/bin
     COMPONENT Runtime
 )
 
 install(FILES config/default.yaml
-    DESTINATION etc/cspnetwork
+    DESTINATION /etc/cspnetwork
     RENAME config.yaml
     COMPONENT Config
 )
@@ -170,7 +170,7 @@ install(FILES config/default.yaml
 install(FILES 
     config/client.cspvpn
     config/client.yaml
-    DESTINATION etc/cspnetwork/examples
+    DESTINATION /etc/cspnetwork/examples
     COMPONENT Config
 )
 
@@ -184,7 +184,7 @@ install(PROGRAMS
     scripts/uninstall.sh
     scripts/build.sh
     scripts/deploy.sh
-    DESTINATION share/cspnetwork/scripts
+    DESTINATION /usr/local/share/cspnetwork/scripts
     COMPONENT Scripts
 )
 
