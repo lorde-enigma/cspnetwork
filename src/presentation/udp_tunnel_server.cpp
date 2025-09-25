@@ -5,6 +5,7 @@
 #include "infrastructure/ip_pool.h"
 #include "domain/connection_context.h"
 #include "infrastructure/logger.h"
+#include <yaml-cpp/yaml.h>
 #include <sys/socket.h>
 #include <netinet/in.h>
 #include <arpa/inet.h>
@@ -18,11 +19,10 @@ namespace seeded_vpn {
 namespace presentation {
 
 UDPTunnelServer::UDPTunnelServer(std::shared_ptr<domain::VPNConfig> config)
-    : config_(config), running_(false), udp_socket_(-1),
-      max_clients_(100), session_timeout_(std::chrono::seconds(300)) {
+    : config_(config), running_(false), udp_socket_(-1) {
     
-    port_ = 8080;
-    ip_pool_ = std::make_unique<infrastructure::IPPool>("10.8.0.0/24");
+    // Load configuration values
+    load_configuration_values();
     
     logger_ = [](const std::string& msg) {
         std::cout << "[INFO] " << msg << std::endl;
@@ -394,25 +394,90 @@ void seeded_vpn::presentation::UDPTunnelServer::setup_server_tun() {
     server_tun_ = std::make_unique<infrastructure::TunInterface>();
     
     infrastructure::TunConfig config;
-    config.device_name = "vpn_tun0";
-    config.local_ip = "10.8.0.1";
-    config.remote_ip = "10.8.0.2";
-    config.netmask = "255.255.255.0";
-    config.mtu = 1500;
+    config.device_name = interface_name_;  // From config
+    config.local_ip = server_ip_;          // From config
+    config.remote_ip = "10.8.0.2";        // Keep default for now
+    config.netmask = "255.255.255.0";     // Keep default for now
+    config.mtu = mtu_size_;                // From config
     config.persistent = false;
     
     if (!server_tun_->create_tun(config)) {
-        throw std::runtime_error("failed to create tun interface");
+        throw std::runtime_error("failed to create tun interface: " + interface_name_);
     }
     configure_server_routing();
 }
 
 void seeded_vpn::presentation::UDPTunnelServer::configure_server_routing() {
     enable_ip_forwarding();
+    setup_server_nat();
+    configure_server_interface();
 }
 
 void seeded_vpn::presentation::UDPTunnelServer::enable_ip_forwarding() {
     system("echo 1 > /proc/sys/net/ipv4/ip_forward");
+}
+
+void seeded_vpn::presentation::UDPTunnelServer::setup_server_nat() {
+    std::string tun_name = server_tun_->get_device_name();
+    
+    system("iptables -t nat -A POSTROUTING -s 10.8.0.0/24 -o enp5s0 -j MASQUERADE");
+    system(("iptables -A FORWARD -i " + tun_name + " -j ACCEPT").c_str());
+    system(("iptables -A FORWARD -o " + tun_name + " -j ACCEPT").c_str());
+}
+
+void seeded_vpn::presentation::UDPTunnelServer::configure_server_interface() {
+    std::string tun_name = server_tun_->get_device_name();
+    
+    // Extract network prefix from client_network_ (e.g., "10.8.0.0/24" -> "/24")
+    size_t slash_pos = client_network_.find('/');
+    std::string network_prefix = (slash_pos != std::string::npos) ? client_network_.substr(slash_pos) : "/24";
+    
+    // Use configured values
+    system(("ip addr add " + server_ip_ + network_prefix + " dev " + tun_name).c_str());
+    system(("ip link set dev " + tun_name + " up").c_str());
+    system(("ip route add " + client_network_ + " dev " + tun_name).c_str());
+}
+
+void seeded_vpn::presentation::UDPTunnelServer::load_configuration_values() {
+    // Load from YAML configuration file
+    try {
+        YAML::Node config_node = YAML::LoadFile("config/default.yaml");
+        
+        // Server configuration
+        port_ = config_node["server"]["port"].as<uint16_t>(8080);
+        
+        // VPN configuration  
+        server_ip_ = config_node["vpn"]["server_ip"].as<std::string>("10.8.0.1");
+        client_network_ = config_node["vpn"]["client_network"].as<std::string>("10.8.0.0/24");
+        interface_name_ = config_node["vpn"]["interface_name"].as<std::string>("cspvpn-server");
+        mtu_size_ = config_node["vpn"]["mtu"].as<uint16_t>(1280);
+        
+        // Network configuration
+        physical_interface_ = config_node["seeded_ipv6"]["interface"].as<std::string>("enp5s0");
+        
+        // Security configuration
+        max_clients_ = config_node["security"]["max_connections"].as<size_t>(1000);
+        session_timeout_ = std::chrono::seconds(config_node["security"]["connection_timeout"].as<int>(300));
+        
+        // Initialize IP pool with configuration
+        ip_pool_ = std::make_unique<infrastructure::IPPool>(client_network_);
+        
+        logger_("configuration loaded - port: " + std::to_string(port_) + 
+               ", network: " + client_network_ + ", interface: " + interface_name_);
+    } catch (const std::exception& e) {
+        // Fallback to defaults if config loading fails
+        port_ = 8080;
+        server_ip_ = "10.8.0.1";
+        client_network_ = "10.8.0.0/24";  
+        interface_name_ = "cspvpn-server";
+        mtu_size_ = 1280;
+        physical_interface_ = "enp5s0";
+        max_clients_ = 100;
+        session_timeout_ = std::chrono::seconds(300);
+        ip_pool_ = std::make_unique<infrastructure::IPPool>(client_network_);
+        
+        logger_("failed to load config, using defaults: " + std::string(e.what()));
+    }
 }
 
 }

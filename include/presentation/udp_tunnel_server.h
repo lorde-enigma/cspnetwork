@@ -14,6 +14,7 @@
 #include "../infrastructure/ip_pool.h"
 #include "../domain/connection_context.h"
 #include "../domain/cspnetwork_config.h"
+#include <yaml-cpp/yaml.h>
 
 namespace seeded_vpn::presentation {
 
@@ -79,8 +80,18 @@ private:
     void setup_server_tun();
     void configure_server_routing();
     void enable_ip_forwarding();
+    void setup_server_nat();
+    void configure_server_interface();
+    void load_configuration_values();
     
+    // Configuration variables loaded from YAML
     uint16_t port_;
+    std::string server_ip_;
+    std::string client_network_;
+    std::string interface_name_;
+    std::string physical_interface_;
+    uint16_t mtu_size_;
+    
     std::shared_ptr<domain::VPNConfig> config_;
     std::atomic<bool> running_;
     int udp_socket_;
